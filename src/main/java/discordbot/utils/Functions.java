@@ -44,6 +44,10 @@ public class Functions {
 		
 		private Messages() {}
 		
+		public static String[] multiArgs(Message m) {
+			return m.getContentRaw().split("\\s+");
+		}
+		
 		public static void sendMessage(MessageChannel channel, String s) {
 			channel.sendMessage(s).queue();
 		}
@@ -68,6 +72,18 @@ public class Functions {
 				building.addField(field);
 			}
 			return building;
+		}
+		
+		public static EmbedBuilder buildEmbed(String title, Color color, String imgURL) {
+			EmbedBuilder building = new EmbedBuilder();
+			building.setTitle(title);
+			building.setColor(color);
+			building.setImage(imgURL);
+			return building;
+		}
+		
+		public static boolean isPinging(String msg) {
+			return msg.startsWith("<@") && msg.endsWith(">");
 		}
 		
 	}

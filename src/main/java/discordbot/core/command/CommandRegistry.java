@@ -10,6 +10,7 @@ import discordbot.utils.Functions;
 import discordbot.utils.Info;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed.Field;
+import net.dv8tion.jda.api.entities.User;
 
 public class CommandRegistry {
 	
@@ -27,16 +28,43 @@ public class CommandRegistry {
 		Functions.Messages.sendEmbeded(event.getChannel(),
 				Functions.Messages.buildEmbed("Bot Information",
 						new Color(0x42f598),
-						new Field("Owner:", Info.OWNER_TAG, false)));
+						new Field("Owner:", Info.OWNER_TAG, false),
+						new Field("Language:", "Java", false)).setThumbnail(Element119.mainJDA.getSelfUser().getAvatarUrl()));
 	});
 	
 	public static final Command HELP = register("help", event -> {
 		MessageChannel c = event.getChannel();
-		switch (Functions.RANDOM.nextInt(3)) {
+		switch (Functions.RANDOM.nextInt(4)) {
 		case 0 : Functions.Messages.sendMessage(c, "the walls are filled with j"); break;
 		case 1 : Functions.Messages.sendMessage(c, "hello " + event.getAuthor().getAsTag()); break;
 		case 2 : Functions.Messages.sendMessage(c, "مرحبا غروه الكرة لوغان"); break;
+		case 3 : Functions.Messages.sendMessage(c, "burger credit card"); break;
 		}
+	});
+	
+	public static final Command AVATAR = register("avatar", event -> {
+		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		if (args.length < 2) {
+			Functions.Messages.sendEmbeded(event.getChannel(),
+					Functions.Messages.buildEmbed(event.getMember().getNickname() + "'s Avatar",
+					new Color(0xffffff),
+					event.getMember().getEffectiveAvatarUrl()));
+		} else if (Functions.Messages.isPinging(args[1])) {
+			User pingedUser = event.getMessage().getMentionedUsers().get(0);
+			Functions.Messages.sendEmbeded(event.getChannel(),
+					Functions.Messages.buildEmbed(pingedUser.getName() + "'s Avatar",
+					new Color(0xffffff),
+					pingedUser.getEffectiveAvatarUrl()));
+		} else if (args[1].length() > 0) {
+			try {
+				User pingedUser = event.getJDA().getUsersByName(args[1], true).get(0);
+				Functions.Messages.sendEmbeded(event.getChannel(),
+						Functions.Messages.buildEmbed(pingedUser.getName() + "'s Avatar",
+						new Color(0xffffff),
+						pingedUser.getEffectiveAvatarUrl()));
+			} catch (IndexOutOfBoundsException e) {Functions.Messages.sendMessage(event.getChannel(), "Error: Could not grab avatar.");}
+			
+		} else Functions.Messages.sendMessage(event.getChannel(), "Error: Could not grab avatar.");
 	});
 	
 //////////////////////////////////////////////////////////////////////////////////////////////////

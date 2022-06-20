@@ -17,7 +17,7 @@ public class Command extends ListenerAdapter {
 	
 	@Override
 	public void onMessageReceived(MessageReceivedEvent event) {
-		if (event.getMessage().getContentRaw().equalsIgnoreCase(Info.PREFIX + this.name)) this.action.action(event);
+		if (event.getMessage().getContentRaw().startsWith(Info.PREFIX + this.name)) this.action.action(event);
 	}
 	
 	public void register() {
