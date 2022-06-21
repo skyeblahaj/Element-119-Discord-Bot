@@ -88,9 +88,9 @@ public class CommandRegistry {
 						Functions.Messages.buildEmbed(pingedUser.getName() + "'s Avatar",
 						new Color(0xffffff),
 						pingedUser.getEffectiveAvatarUrl()));
-			} catch (IndexOutOfBoundsException e) {Functions.Messages.sendMessage(event.getChannel(), "Error: Could not grab avatar.");}
+			} catch (IndexOutOfBoundsException e) {Functions.Messages.sendEmbeded(event.getChannel(), Functions.Messages.errorEmbed(event.getMessage(), "Could not grab avatar."));}
 			
-		} else Functions.Messages.sendMessage(event.getChannel(), "Error: Could not grab avatar.");
+		} else Functions.Messages.sendEmbeded(event.getChannel(), Functions.Messages.errorEmbed(event.getMessage(), "Could not grab avatar."));
 	});
 	
 	public static final Command TTS = register("tts", event -> {
