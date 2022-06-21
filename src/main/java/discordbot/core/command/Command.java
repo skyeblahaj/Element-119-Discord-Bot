@@ -7,6 +7,8 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 
 public class Command extends ListenerAdapter {
 
+	public static boolean toggle = true;
+	
 	private String name;
 	private CommandAction action;
 	
@@ -17,7 +19,7 @@ public class Command extends ListenerAdapter {
 	
 	@Override
 	public void onMessageReceived(MessageReceivedEvent event) {
-		if (event.getMessage().getContentRaw().startsWith(Info.PREFIX + this.name)) this.action.action(event);
+		if (event.getMessage().getContentRaw().startsWith(Info.PREFIX + this.name) && toggle) this.action.action(event);
 	}
 	
 	public void register() {

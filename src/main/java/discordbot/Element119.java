@@ -20,7 +20,7 @@ public class Element119 {
 		mainJDA = JDABuilder.createDefault(Functions.Utils.readToken(new File("src/main/resources/private/jda_token.prv"))).build();
 		System.out.println("Bot is configuring...");
 		
-		mainJDA.getPresence().setActivity(Activity.playing("Prefix: " + Info.PREFIX));
+		mainJDA.getPresence().setActivity(Activity.playing("Prefix: '" + Info.PREFIX + "'"));
 		
 		CommandRegistry.registerAll();
 	}

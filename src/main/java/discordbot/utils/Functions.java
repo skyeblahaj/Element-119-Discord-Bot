@@ -13,7 +13,7 @@ import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed.Field;
 
-public class Functions {
+public class Functions{
 
 	//utils for memory management
 	public static final Random RANDOM = new Random();
@@ -37,6 +37,12 @@ public class Functions {
 			} catch (IOException e) {return null;}
 			
 			return output;
+		}
+		
+		public static CharSequence capitalize(String toCap) {
+			char $1 = toCap.toUpperCase().charAt(0);
+			String rest = toCap.substring(1).toLowerCase();
+			return $1 + rest;
 		}
 	}
 	
@@ -84,6 +90,21 @@ public class Functions {
 		
 		public static boolean isPinging(String msg) {
 			return msg.startsWith("<@") && msg.endsWith(">");
+		}
+		
+		public static EmbedBuilder errorEmbed(Message m, String msg) {
+			EmbedBuilder building = new EmbedBuilder();
+			building.setTitle("Error");
+			building.setColor(0xff0000);
+			try {
+				building.addField(new Field("Error at: \"" + m.getContentRaw().substring(0, m.getContentRaw().indexOf(' ')) + "\"",
+			  			msg,
+			  			false));
+			} catch (StringIndexOutOfBoundsException e) { //if only one parameter is typed
+				building.addField(new Field("Error at: \"" + m.getContentRaw() + "\"", msg, false));
+			}
+			
+			return building;
 		}
 		
 	}
