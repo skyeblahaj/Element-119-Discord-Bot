@@ -1,6 +1,9 @@
 package discordbot.utils;
 
 import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.Image;
+import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
@@ -24,7 +27,6 @@ public class Functions{
 	////
 	
 	public static class Utils { //ordinary utilities
-		
 		private Utils() {}
 		
 		public static String readToken(File toRead) {
@@ -47,7 +49,6 @@ public class Functions{
 	}
 	
 	public static class Messages { //message utilities
-		
 		private Messages() {}
 		
 		public static String[] multiArgs(Message m) {
@@ -105,6 +106,23 @@ public class Functions{
 			}
 			
 			return building;
+		}
+		
+	}
+	
+	public static class Rendering { //media utilities
+		private Rendering() {}
+		
+		public static BufferedImage resizeCanvas(BufferedImage img, int x, int y, boolean scale) {
+			BufferedImage out = new BufferedImage(x, y, img.getType());
+			Graphics2D renderer = out.createGraphics();
+			if (scale) {
+				Image scaled = img.getScaledInstance(x, y, Image.SCALE_SMOOTH);
+				renderer.drawImage(scaled, 0, 0, null);
+			} else {
+				renderer.drawImage(img, 0, y - img.getHeight(), null);
+			}
+			return out;
 		}
 		
 	}

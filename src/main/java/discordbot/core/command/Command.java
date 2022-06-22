@@ -9,8 +9,8 @@ public class Command extends ListenerAdapter {
 
 	public static boolean toggle = true;
 	
-	private String name;
-	private CommandAction action;
+	protected String name;
+	protected CommandAction action;
 	
 	public Command(String name, CommandAction action) {
 		this.name = name;

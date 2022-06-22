@@ -1,11 +1,14 @@
 package discordbot.core.command;
 
 import java.awt.Color;
+import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.imageio.ImageIO;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.sound.sampled.AudioFileFormat;
@@ -21,10 +24,13 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 
 import discordbot.Element119;
+import discordbot.core.render.ImageLayerer;
+import discordbot.core.render.Scaler;
 import discordbot.log.Logging;
 import discordbot.utils.Functions;
 import discordbot.utils.Info;
 import discordbot.utils.RegistryBus;
+import net.dv8tion.jda.api.entities.Message.Attachment;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed.Field;
 import net.dv8tion.jda.api.entities.User;
@@ -32,10 +38,17 @@ import net.dv8tion.jda.api.entities.User;
 public class CommandRegistry {
 	
 	public static final List<Command> COMMANDS = new ArrayList<>();
+	public static final List<OwnerCommand> OWNER_COMMANDS = new ArrayList<>();
 	
 	private static Command register(String name, CommandAction action) {
 		Command cmd = new Command(name, action);
 		COMMANDS.add(cmd);
+		return cmd;
+	}
+	
+	private static OwnerCommand registerOwner(String name, CommandAction action) {
+		OwnerCommand cmd = new OwnerCommand(name, action);
+		OWNER_COMMANDS.add(cmd);
 		return cmd;
 	}
 	
@@ -133,10 +146,46 @@ public class CommandRegistry {
 				}
 			} catch (Exception e) {}
 		}).start();
-		
+	});
+	
+	public static final Command QUOTE = register("quote", event -> {
+		try {
+			Attachment attachment = event.getMessage().getAttachments().get(0);
+			File attachmentCached = new File("src/main/resources/cache/quoteIn." + attachment.getFileExtension());
+			FileUtils.copyURLToFile(new URL(attachment.getProxyUrl()), attachmentCached);
+			
+			BufferedImage biAttachment = ImageIO.read(attachmentCached);
+			BufferedImage bubble = ImageIO.read(new File("src/main/resources/bubble.png"));
+			
+			Scaler scalerTool = new Scaler(bubble, biAttachment, 1f, 0.33f);
+			ImageLayerer renderTool = new ImageLayerer(biAttachment, scalerTool.scale());
+			
+			renderTool.render(0, 0, 0);
+			renderTool.render(1, 0, 0);
+			String attachmentOutCached = "src/main/resources/cache/quoteOut.png";
+			renderTool.complete(attachmentOutCached);
+			
+			Functions.Messages.sendFile(event.getChannel(), new File(attachmentOutCached));
+			
+		} catch (IOException e) {e.printStackTrace();}
 	});
 	
 //////////////////////////////////////////////////////////////////////////////////////////////////
+
+	public static final OwnerCommand BOT_SHUTDOWN = registerOwner("botshutdown", event -> {
+		Functions.Messages.sendMessage(event.getChannel(), "Bot is shutting down...");
+		System.exit(0);
+	});
+	
+	public static final OwnerCommand SYSTEM_SHUTDOWN = registerOwner("systemshutdown", event -> {
+		Functions.Messages.sendMessage(event.getChannel(), "System is shutting down...");
+		try {
+			Runtime.getRuntime().exec("shutdown -s -t 0"); //win10 only
+		} catch (IOException e) {}
+	});
+	
+//////////////////////////////////////////////////////////////////////////////////////////////////
+	
 	@RegistryBus
 	public static void registerAll() {
 		Element119.mainJDA.addEventListener(new Logging());
@@ -144,6 +193,9 @@ public class CommandRegistry {
 			cmd.register();
 			System.out.println(cmd.getName() + " command is registered.");
 		}
+		for (OwnerCommand cmd : OWNER_COMMANDS) {
+			cmd.register();
+			System.out.println(cmd.getName() + " owner command is registered.");
+		}
 	}
-
 }
