@@ -23,13 +23,19 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 
+import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
+import com.sedmelluq.discord.lavaplayer.track.AudioTrackInfo;
+
 import discordbot.Element119;
+import discordbot.core.audio.GuildMusicManager;
+import discordbot.core.audio.PlayerManager;
 import discordbot.core.render.ImageLayerer;
 import discordbot.core.render.Scaler;
 import discordbot.log.Logging;
 import discordbot.utils.Functions;
 import discordbot.utils.Info;
 import discordbot.utils.RegistryBus;
+import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Message.Attachment;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed.Field;
@@ -37,8 +43,11 @@ import net.dv8tion.jda.api.entities.User;
 
 public class CommandRegistry {
 	
+	private CommandRegistry() {}
+	
 	public static final List<Command> COMMANDS = new ArrayList<>();
 	public static final List<OwnerCommand> OWNER_COMMANDS = new ArrayList<>();
+	public static final List<PermissionCommand> PERMISSION_COMMANDS = new ArrayList<>();
 	
 	private static Command register(String name, CommandAction action) {
 		Command cmd = new Command(name, action);
@@ -49,6 +58,12 @@ public class CommandRegistry {
 	private static OwnerCommand registerOwner(String name, CommandAction action) {
 		OwnerCommand cmd = new OwnerCommand(name, action);
 		OWNER_COMMANDS.add(cmd);
+		return cmd;
+	}
+	
+	private static PermissionCommand registerPermission(String name, CommandAction action, Permission... perms) {
+		PermissionCommand cmd = new PermissionCommand(name, action, perms);
+		PERMISSION_COMMANDS.add(cmd);
 		return cmd;
 	}
 	
@@ -170,6 +185,21 @@ public class CommandRegistry {
 		} catch (IOException e) {e.printStackTrace();}
 	});
 	
+	public static final Command TRACK = register("track", event -> {
+		if (event.getGuild().getAudioManager().isConnected()) {
+			final GuildMusicManager manager = PlayerManager.getInstance().getMusicManager(event.getGuild());
+			final AudioPlayer player = manager.getPlayer();
+			final AudioTrackInfo info = player.getPlayingTrack().getInfo();
+			Functions.Messages.sendEmbeded(event.getChannel(),
+					Functions.Messages.buildEmbed("Track Info", Color.CYAN,
+							new Field("Title:", info.title, false),
+							new Field("Author:", info.author, false),
+							new Field("Source:", info.uri, false),
+							new Field("Time:", manager.getScheduler().getSeconds() + " / " + (info.length / 1000), false)));
+		} else Functions.Messages.sendEmbeded(event.getChannel(),
+					Functions.Messages.errorEmbed(event.getMessage(), "Bot is not connected to an audio channel."));
+	});
+	
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 	public static final OwnerCommand BOT_SHUTDOWN = registerOwner("botshutdown", event -> {
@@ -197,5 +227,9 @@ public class CommandRegistry {
 			cmd.register();
 			System.out.println(cmd.getName() + " owner command is registered.");
 		}
+		for (PermissionCommand cmd : PERMISSION_COMMANDS) {
+			cmd.register();
+			System.out.println(cmd.getName() + " permission command is registered.");
+		}	
 	}
 }

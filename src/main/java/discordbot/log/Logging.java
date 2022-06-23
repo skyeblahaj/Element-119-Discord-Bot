@@ -12,7 +12,7 @@ public class Logging extends ListenerAdapter {
 
 	@Override
 	public void onMessageReceived(MessageReceivedEvent event) {
-		System.out.println(event.getAuthor().getId() + "\n---\n" +
+		System.out.println(event.getAuthor().toString() + "\n---\n" +
 						event.getChannel().toString() + "\n---\n" +
 						event.getMessage().getContentRaw() + '\n');
 		

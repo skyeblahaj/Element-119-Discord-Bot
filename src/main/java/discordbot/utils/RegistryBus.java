@@ -1,11 +1,11 @@
 package discordbot.utils;
 
 import static java.lang.annotation.ElementType.METHOD;
-import static java.lang.annotation.RetentionPolicy.SOURCE;
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
-@Retention(SOURCE) //TODO change to RUNTIME when possible
+@Retention(RUNTIME)
 @Target(METHOD)
 public @interface RegistryBus {}

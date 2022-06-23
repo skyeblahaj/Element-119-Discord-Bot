@@ -46,6 +46,10 @@ public class Functions{
 			String rest = toCap.substring(1).toLowerCase();
 			return $1 + rest;
 		}
+		
+		public static boolean startsWithIgnoreCase(String org, String key) {
+			return org.toLowerCase().startsWith(key.toLowerCase());
+		}
 	}
 	
 	public static class Messages { //message utilities

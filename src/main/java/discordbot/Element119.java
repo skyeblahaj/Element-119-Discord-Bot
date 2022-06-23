@@ -2,12 +2,19 @@ package discordbot;
 
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.Set;
 
 import javax.security.auth.login.LoginException;
 
-import discordbot.core.command.CommandRegistry;
+import org.reflections.Reflections;
+import org.reflections.scanners.Scanners;
+import org.reflections.util.ClasspathHelper;
+import org.reflections.util.ConfigurationBuilder;
+
 import discordbot.utils.Functions;
 import discordbot.utils.Info;
+import discordbot.utils.RegistryBus;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Activity;
@@ -22,7 +29,13 @@ public class Element119 {
 		
 		mainJDA.getPresence().setActivity(Activity.playing("Prefix: '" + Info.PREFIX + "'"));
 		
-		CommandRegistry.registerAll();
+		Reflections classTool = new Reflections(new ConfigurationBuilder()
+				.setUrls(ClasspathHelper.forJavaClassPath())
+				.setScanners(Scanners.MethodsAnnotated));
+		Set<Method> busSubscribers = classTool.getMethodsAnnotatedWith(RegistryBus.class);
+		for (Method m : busSubscribers) {
+			m.invoke(null);
+		}
+		//System.err.println("\n--START OF LOGS--\n"); //err printstream for red color
 	}
-	
 }
