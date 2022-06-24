@@ -1,13 +1,12 @@
 package discordbot.core.command;
 
 import discordbot.Element119;
+import discordbot.core.event.BasicEventRegistry;
+import discordbot.inter_face.ManualControl;
 import discordbot.utils.Info;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
 
-public class Command extends ListenerAdapter {
-
-	public static boolean toggle = true;
+public class Command extends BasicEventRegistry {
 	
 	protected String name;
 	protected CommandAction action;
@@ -19,7 +18,7 @@ public class Command extends ListenerAdapter {
 	
 	@Override
 	public void onMessageReceived(MessageReceivedEvent event) {
-		if (event.getMessage().getContentRaw().startsWith(Info.PREFIX + this.name) && toggle) this.action.action(event);
+		if (event.getMessage().getContentRaw().startsWith(Info.PREFIX + this.name) && ManualControl.commandToggle) this.action.action(event);
 	}
 	
 	public void register() {

@@ -13,6 +13,7 @@ import com.sedmelluq.discord.lavaplayer.track.AudioPlaylist;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 
 import discordbot.utils.Functions;
+import discordbot.utils.RegistryBus;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageEmbed.Field;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -21,7 +22,7 @@ public class PlayerManager {
 
 	private static PlayerManager INSTANCE;
 	
-	private final Map<Long, GuildMusicManager> guildManagers;
+	private final Map<String, GuildMusicManager> guildManagers;
 	private final AudioPlayerManager player;
 	
 	private PlayerManager() {
@@ -32,7 +33,7 @@ public class PlayerManager {
 	}
 	
 	public GuildMusicManager getMusicManager(Guild guild) {
-		return this.guildManagers.computeIfAbsent(guild.getIdLong(), id -> {
+		return this.guildManagers.computeIfAbsent(guild.getId(), id -> {
 			final GuildMusicManager manager = new GuildMusicManager(this.player);
 			guild.getAudioManager().setSendingHandler(manager.getSendHandler());
 			return manager;
@@ -51,7 +52,7 @@ public class PlayerManager {
 							Functions.Messages.buildEmbed("Audio Player", new Color(0x00ff00),
 									new Field("Loading:", track.getInfo().title, false),
 									new Field("Author:", track.getInfo().author, false),
-									new Field("Length:", Long.toString(track.getInfo().length), false)));
+									new Field("Length:", Long.toString(track.getInfo().length / 1000) + 's', false)));
 			}
 			
 			@Override
@@ -74,8 +75,11 @@ public class PlayerManager {
 	}
 	
 	public static PlayerManager getInstance() {
-		if (INSTANCE == null)
-			INSTANCE = new PlayerManager();
 		return INSTANCE;
+	}
+	
+	@RegistryBus
+	public static void registerPlayerInstance() {
+		INSTANCE = new PlayerManager();
 	}
 }

@@ -8,4 +8,4 @@ import java.lang.annotation.Target;
 
 @Retention(RUNTIME)
 @Target(METHOD)
-public @interface RegistryBus {}
+public @interface RegistryBus {} //must be called on static methods

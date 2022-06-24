@@ -1,5 +1,6 @@
 package discordbot.core.command;
 
+import discordbot.inter_face.ManualControl;
 import discordbot.utils.Functions;
 import discordbot.utils.Info;
 import net.dv8tion.jda.api.Permission;
@@ -24,7 +25,7 @@ public class PermissionCommand extends Command {
 				break;
 			}
 		}
-		if (msgBool && isAllowed) this.action.action(event);
+		if (msgBool && isAllowed && ManualControl.commandToggle) this.action.action(event);
 		else if (msgBool) {
 			Functions.Messages.sendEmbeded(event.getChannel(),
 					Functions.Messages.errorEmbed(event.getMessage(), "User does not have access to use this command."));

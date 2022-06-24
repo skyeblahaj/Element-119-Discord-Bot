@@ -17,21 +17,25 @@ import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.hc.core5.http.ParseException;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 
+import com.google.api.services.youtube.YouTube;
+import com.google.api.services.youtube.model.SearchResult;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrackInfo;
 
 import discordbot.Element119;
 import discordbot.core.audio.GuildMusicManager;
 import discordbot.core.audio.PlayerManager;
+import discordbot.core.audio.spotify.LinkConverter;
 import discordbot.core.render.ImageLayerer;
 import discordbot.core.render.Scaler;
-import discordbot.log.Logging;
+import discordbot.inter_face.ManualControl;
 import discordbot.utils.Functions;
 import discordbot.utils.Info;
 import discordbot.utils.RegistryBus;
@@ -40,6 +44,8 @@ import net.dv8tion.jda.api.entities.Message.Attachment;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed.Field;
 import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.managers.AudioManager;
+import se.michaelthelin.spotify.exceptions.SpotifyWebApiException;
 
 public class CommandRegistry {
 	
@@ -185,19 +191,95 @@ public class CommandRegistry {
 		} catch (IOException e) {e.printStackTrace();}
 	});
 	
+	public static final Command PLAY = register("play", event -> {
+		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		AudioManager manager = event.getGuild().getAudioManager();
+		if (args.length < 2) Functions.Messages.sendEmbeded(event.getChannel(),
+				Functions.Messages.errorEmbed(event.getMessage(), "Not enough arguments."));
+		else {
+			if (!manager.isConnected()) {
+				try {
+					manager.openAudioConnection(event.getMember().getVoiceState().getChannel());
+					if (args[1].contains("youtu.be") || args[1].contains("youtube.com")) {
+
+						PlayerManager.getInstance().load(event, args[1].replace("shorts/", "watch?v="));
+						
+					} else if (args[1].contains("spotify.com")) {
+						List<String> songs = null;
+						try {
+							songs = new LinkConverter().convert(args[1]);
+						} catch (ParseException | SpotifyWebApiException | IOException e) {
+							e.printStackTrace();
+						}
+						YouTube yt = Functions.OAuth.buildYoutube();
+						for (String song : songs) {
+							List<SearchResult> results = yt.search().list("id,snippet").setQ(song).setMaxResults(4L)
+									.setFields("items(id/kind,id/videoId,snippet/title,snippet/thumbnails/default/url)").execute().getItems();
+							if (!results.isEmpty()) {
+								String vidID = results.get(0).getId().getVideoId();
+								PlayerManager.getInstance().load(event, "https://www.youtube.com/watch?v=" + vidID);
+								Functions.Messages.sendEmbeded(event.getChannel(),
+										Functions.Messages.buildEmbed("Audio Player", new Color(0xf0f0f0),
+												new Field("Queued:", PlayerManager.getInstance()
+																	 .getMusicManager(event.getGuild())
+																	 .getPlayer().getPlayingTrack()
+																	 .getInfo().title, false)));
+							} else Functions.Messages.sendEmbeded(event.getChannel(),
+									Functions.Messages.errorEmbed(event.getMessage(), "Could not retrieve song via the Spotify API."));
+						}
+					} else {
+						Functions.Messages.sendEmbeded(event.getChannel(),
+								Functions.Messages.errorEmbed(event.getMessage(), "URL or file cannot be retrieved."));
+					}
+				} catch (IllegalArgumentException e) {
+					Functions.Messages.sendEmbeded(event.getChannel(),
+							Functions.Messages.errorEmbed(event.getMessage(), "User is not connected to a voice channel."));
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	});
+	
 	public static final Command TRACK = register("track", event -> {
 		if (event.getGuild().getAudioManager().isConnected()) {
 			final GuildMusicManager manager = PlayerManager.getInstance().getMusicManager(event.getGuild());
 			final AudioPlayer player = manager.getPlayer();
-			final AudioTrackInfo info = player.getPlayingTrack().getInfo();
-			Functions.Messages.sendEmbeded(event.getChannel(),
-					Functions.Messages.buildEmbed("Track Info", Color.CYAN,
-							new Field("Title:", info.title, false),
-							new Field("Author:", info.author, false),
-							new Field("Source:", info.uri, false),
-							new Field("Time:", manager.getScheduler().getSeconds() + " / " + (info.length / 1000), false)));
+			AudioTrackInfo info = null;
+			try {
+				info = player.getPlayingTrack().getInfo();
+				
+				Functions.Messages.sendEmbeded(event.getChannel(),
+						Functions.Messages.buildEmbed("Track Info", Color.CYAN,
+								new Field("Title:", info.title, false),
+								new Field("Author:", info.author, false),
+								new Field("Source:", info.uri, false),
+								new Field("Time:", manager.getScheduler().getSecondsIn() + " / " + (info.length / 1000) + 's', false)));
+			} catch (NullPointerException e) {
+				Functions.Messages.sendEmbeded(event.getChannel(),
+						Functions.Messages.errorEmbed(event.getMessage(), "No track is playing."));
+			}		
 		} else Functions.Messages.sendEmbeded(event.getChannel(),
 					Functions.Messages.errorEmbed(event.getMessage(), "Bot is not connected to an audio channel."));
+	});
+	
+	public static final Command NEXT = register("next", event -> {
+		if (event.getGuild().getAudioManager().isConnected()) {
+			final GuildMusicManager manager = PlayerManager.getInstance().getMusicManager(event.getGuild());
+			if (manager.getScheduler().getQueue() == null) {
+				Functions.Messages.sendEmbeded(event.getChannel(),
+						Functions.Messages.errorEmbed(event.getMessage(), "Queue is empty."));
+			} else manager.getScheduler().nextTrack();
+		}
+	});
+	
+	public static final Command VC = register("vc", event -> {
+		if (event.getMember().getVoiceState().inAudioChannel()) {
+			AudioManager manager = event.getGuild().getAudioManager();
+			if (manager.isConnected()) manager.closeAudioConnection();
+			else manager.openAudioConnection(event.getMember().getVoiceState().getChannel());
+		} else Functions.Messages.sendEmbeded(event.getChannel(),
+				Functions.Messages.errorEmbed(event.getMessage(), "User is not in a voice channel."));
 	});
 	
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -214,11 +296,15 @@ public class CommandRegistry {
 		} catch (IOException e) {}
 	});
 	
+	public static final OwnerCommand MANUAL_CONTROL = registerOwner("takeover", event -> {
+		ManualControl.commandToggle = false;
+		new ManualControl(true, event);
+	});
+	
 //////////////////////////////////////////////////////////////////////////////////////////////////
 	
 	@RegistryBus
 	public static void registerAll() {
-		Element119.mainJDA.addEventListener(new Logging());
 		for (Command cmd : COMMANDS) {
 			cmd.register();
 			System.out.println(cmd.getName() + " command is registered.");

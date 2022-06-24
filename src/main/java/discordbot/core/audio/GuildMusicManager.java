@@ -11,9 +11,9 @@ public class GuildMusicManager { //encap class
 	
 	public GuildMusicManager(AudioPlayerManager manager) {
 		this.player = manager.createPlayer();
-		this.scheduler = new TrackScheduler(player);
+		this.scheduler = new TrackScheduler(this.player);
 		this.player.addListener(scheduler);
-		this.sendHandler = new AudioHandler(player);
+		this.sendHandler = new AudioHandler(this.player);
 	}
 	
 	public AudioHandler getSendHandler() {

@@ -10,6 +10,10 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.Random;
 
+import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.json.jackson2.JacksonFactory;
+import com.google.api.services.youtube.YouTube;
+
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Emote;
 import net.dv8tion.jda.api.entities.Message;
@@ -49,6 +53,24 @@ public class Functions{
 		
 		public static boolean startsWithIgnoreCase(String org, String key) {
 			return org.toLowerCase().startsWith(key.toLowerCase());
+		}
+	}
+	
+	public static class OAuth {
+		private OAuth() {}
+		
+		public static YouTube buildYoutube() {
+			final YouTube yt;
+			YouTube app = null;
+			try {
+				app = new YouTube.Builder(GoogleNetHttpTransport.newTrustedTransport(),
+											JacksonFactory.getDefaultInstance(),
+											(req -> req.setInterceptor(
+													inter -> inter.getUrl().set("key",
+														Functions.Utils.readToken(new File("src/main/resources/private/google_token.prv")))))).build();
+			} catch(Exception e) {e.printStackTrace();}
+			yt = app;
+			return yt;
 		}
 	}
 	
