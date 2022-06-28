@@ -2,6 +2,7 @@ package discordbot.core.render;
 
 import java.awt.Graphics2D;
 import java.awt.Image;
+import java.awt.Point;
 import java.awt.image.BufferedImage;
 import java.awt.image.RenderedImage;
 import java.io.File;
@@ -11,7 +12,6 @@ import javax.imageio.ImageIO;
 
 import org.apache.commons.io.FilenameUtils;
 
-import discordbot.core.math.Point;
 
 public class ImageLayerer {
 
