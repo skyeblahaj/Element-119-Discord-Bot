@@ -18,7 +18,7 @@ public class TrackScheduler extends AudioEventAdapter {
 
 	private final AudioPlayer player;
 	private final BlockingQueue<AudioTrack> queue;
-	private boolean loop;
+	private boolean loop = false;
 	private int secondsIn;
 	private ScheduledExecutorService sched;
 	
@@ -68,6 +68,10 @@ public class TrackScheduler extends AudioEventAdapter {
 	
 	public BlockingQueue<AudioTrack> getQueue(){
 		return this.queue;
+	}
+	
+	public AudioPlayer getPlayer() {
+		return this.player;
 	}
 	
 	public int getSecondsIn() {

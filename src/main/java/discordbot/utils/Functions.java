@@ -5,8 +5,10 @@ import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Random;
 
@@ -43,6 +45,14 @@ public class Functions{
 			} catch (IOException e) {return null;}
 			
 			return output;
+		}
+		
+		public static void writeToFile(File f, String s) {
+			try {
+				BufferedWriter bw = new BufferedWriter(new FileWriter(f));
+				bw.write(s);
+				bw.close();
+			} catch (IOException e) {return;}
 		}
 		
 		public static CharSequence capitalize(String toCap) {
@@ -95,6 +105,10 @@ public class Functions{
 		
 		public static void sendEmbeded(MessageChannel channel, EmbedBuilder b) {
 			channel.sendMessageEmbeds(b.build()).queue();
+		}
+		
+		public static void sendEmbeded(MessageChannel channel, EmbedBuilder b, File file) {
+			channel.sendFile(file).setEmbeds(b.build()).queue();
 		}
 		
 		public static EmbedBuilder buildEmbed(String title, Color color, Field... fields) {
@@ -150,6 +164,5 @@ public class Functions{
 			}
 			return out;
 		}
-		
 	}
 }

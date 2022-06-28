@@ -12,6 +12,7 @@ import org.reflections.scanners.Scanners;
 import org.reflections.util.ClasspathHelper;
 import org.reflections.util.ConfigurationBuilder;
 
+import discordbot.utils.BusPassenger;
 import discordbot.utils.Functions;
 import discordbot.utils.Info;
 import discordbot.utils.RegistryBus;
@@ -31,10 +32,13 @@ public class Element119 {
 		
 		Reflections classTool = new Reflections(new ConfigurationBuilder()
 				.setUrls(ClasspathHelper.forJavaClassPath())
-				.setScanners(Scanners.MethodsAnnotated));
-		Set<Method> busSubscribers = classTool.getMethodsAnnotatedWith(RegistryBus.class);
-		for (Method m : busSubscribers) {
-			m.invoke(null);
+				.setScanners(Scanners.MethodsAnnotated,
+							 Scanners.TypesAnnotated));
+		Set<Class<?>> busSubscribers = classTool.getTypesAnnotatedWith(BusPassenger.class);
+		for (Class<?> c : busSubscribers) {
+			for (Method m : c.getMethods()) {
+				if (m.isAnnotationPresent(RegistryBus.class)) m.invoke(null);
+			}
 		}
 		//System.err.println("\n--START OF LOGS--\n"); //err printstream for red color
 	}

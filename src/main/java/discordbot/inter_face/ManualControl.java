@@ -11,28 +11,30 @@ import java.net.URL;
 import javax.imageio.ImageIO;
 import javax.swing.JButton;
 import javax.swing.JFrame;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 
 import discordbot.Element119;
+import discordbot.core.event.ExtraRegistry;
 import discordbot.utils.Functions;
+import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 public class ManualControl {
 
-	public static boolean commandToggle = true;
+	public volatile static boolean commandToggle = true;
 	
 	public ManualControl(boolean v, MessageReceivedEvent event) {
 		new GraphicsInterface(event).setVisible(v);
 	}
 	
 	private class GraphicsInterface extends JFrame {
-		private static final long serialVersionUID = 1L;
 		
 		public GraphicsInterface(MessageReceivedEvent event) {
 			super(Element119.class.getSimpleName() + " Control Panel");
 			Dimension resolution = Toolkit.getDefaultToolkit().getScreenSize();
-			this.setSize(resolution.width / 3, resolution.height / 3);
+			this.setSize(resolution.width / 3, resolution.height / 3);//int div, will be slightly smaller than 1/3 the screen resolution
 			this.setLocationRelativeTo(null);
 			this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 			this.addWindowListener(new WindowAdapter() {
@@ -45,17 +47,41 @@ public class ManualControl {
 				this.setIconImage(ImageIO.read(new URL(Element119.mainJDA.getSelfUser().getAvatarUrl())));
 			} catch (IOException e) {e.printStackTrace();}
 			this.setResizable(false);
-			this.getContentPane().setLayout(new GridLayout(2, 1));
+			this.getContentPane().setLayout(new GridLayout(2, 2));
 			JTextField input = new JTextField(),
 					guildID = new JTextField();
 			this.getContentPane().add(new JPanel().add(input));
 			this.getContentPane().add(new JPanel().add(guildID));
-			JButton send = new JButton("Send to Channel.");
+			JButton send = new JButton("Send to Channel");
 			send.addActionListener(e -> {
 				Functions.Messages.sendMessage(Element119.mainJDA.getTextChannelById(guildID.getText()), input.getText());
 			});
 			this.getContentPane().add(new JPanel().add(send));
-					
+			JButton settings = new JButton("Settings");
+			settings.addActionListener($0 -> {
+				JFrame menu = new JFrame("Settings Menu");
+				menu.setSize(resolution.width / 4, resolution.height / 4);
+				menu.setLocationRelativeTo(null);
+				menu.getContentPane().setLayout(new GridLayout(4,4));
+				
+				menu.getContentPane().add(new JPanel().add(new JLabel("Server Target ID:")));
+				JTextField server = new JTextField();
+				menu.getContentPane().add(new JPanel().add(server));
+				menu.getContentPane().add(new JPanel()); //null panel
+				
+				menu.getContentPane().add(new JPanel().add(new JLabel("Change Nickname")));
+				JTextField newNickname = new JTextField();
+				menu.getContentPane().add(new JPanel().add(newNickname));
+				JButton changeNickname = new JButton("Confirm");
+				changeNickname.addActionListener($1 -> {
+					Guild guild = Element119.mainJDA.getGuildById(server.getText());
+					guild.modifyNickname(ExtraRegistry.BOT_MEMBER.get(guild), newNickname.getText());
+				});
+				menu.getContentPane().add(new JPanel().add(changeNickname));
+				
+				menu.setVisible(true);
+			});
+			this.getContentPane().add(settings);
 		}
 	}
 }

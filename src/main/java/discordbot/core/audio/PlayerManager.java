@@ -40,7 +40,7 @@ public class PlayerManager {
 		});
 	}
 	
-	public void load(MessageReceivedEvent event, String trackSelected) {
+	public void load_play(MessageReceivedEvent event, String trackSelected) {
 		final GuildMusicManager serverMainAudioManager = this.getMusicManager(event.getGuild());
 		this.player.loadItemOrdered(serverMainAudioManager, trackSelected, new AudioLoadResultHandler() {
 			

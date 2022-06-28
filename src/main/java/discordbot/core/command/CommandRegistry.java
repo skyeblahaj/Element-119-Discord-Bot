@@ -1,6 +1,7 @@
 package discordbot.core.command;
 
 import java.awt.Color;
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -19,6 +20,7 @@ import javax.sound.sampled.AudioSystem;
 import org.apache.commons.io.FileUtils;
 import org.apache.hc.core5.http.ParseException;
 import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -36,6 +38,7 @@ import discordbot.core.audio.spotify.LinkConverter;
 import discordbot.core.render.ImageLayerer;
 import discordbot.core.render.Scaler;
 import discordbot.inter_face.ManualControl;
+import discordbot.utils.BusPassenger;
 import discordbot.utils.Functions;
 import discordbot.utils.Info;
 import discordbot.utils.RegistryBus;
@@ -47,9 +50,12 @@ import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.managers.AudioManager;
 import se.michaelthelin.spotify.exceptions.SpotifyWebApiException;
 
+@BusPassenger
 public class CommandRegistry {
 	
 	private CommandRegistry() {}
+	
+	public static final List<List<? extends Command>> ALL_COMMANDS = new ArrayList<>();
 	
 	public static final List<Command> COMMANDS = new ArrayList<>();
 	public static final List<OwnerCommand> OWNER_COMMANDS = new ArrayList<>();
@@ -96,8 +102,10 @@ public class CommandRegistry {
 	
 	public static final Command COMMAND_LIST = register("commands", event -> {
 		String list = "";
-		for (Command c : COMMANDS) {
-			list += "\n" + c.getName();
+		for (List<? extends Command> l : ALL_COMMANDS) {
+			for (Command c : l) {
+				list += "\n" + c.getName();
+			}
 		}
 		Functions.Messages.sendMessage(event.getChannel(), "```--Command List--" + list + "```");
 	});
@@ -141,6 +149,7 @@ public class CommandRegistry {
 					//exceptions
 					args[1] = (String) Functions.Utils.capitalize(args[1]);
 					if (args[1].equalsIgnoreCase("spongebob")) args[1] = "SpongeBob SquarePants";
+					
 					//
 					String input = "";
 					for (int i = 2; i < args.length; i++) {
@@ -202,7 +211,7 @@ public class CommandRegistry {
 					manager.openAudioConnection(event.getMember().getVoiceState().getChannel());
 					if (args[1].contains("youtu.be") || args[1].contains("youtube.com")) {
 
-						PlayerManager.getInstance().load(event, args[1].replace("shorts/", "watch?v="));
+						PlayerManager.getInstance().load_play(event, args[1].replace("shorts/", "watch?v="));
 						
 					} else if (args[1].contains("spotify.com")) {
 						List<String> songs = null;
@@ -217,7 +226,7 @@ public class CommandRegistry {
 									.setFields("items(id/kind,id/videoId,snippet/title,snippet/thumbnails/default/url)").execute().getItems();
 							if (!results.isEmpty()) {
 								String vidID = results.get(0).getId().getVideoId();
-								PlayerManager.getInstance().load(event, "https://www.youtube.com/watch?v=" + vidID);
+								PlayerManager.getInstance().load_play(event, "https://www.youtube.com/watch?v=" + vidID);
 								Functions.Messages.sendEmbeded(event.getChannel(),
 										Functions.Messages.buildEmbed("Audio Player", new Color(0xf0f0f0),
 												new Field("Queued:", PlayerManager.getInstance()
@@ -282,6 +291,70 @@ public class CommandRegistry {
 				Functions.Messages.errorEmbed(event.getMessage(), "User is not in a voice channel."));
 	});
 	
+	public static final Command CAPTION = register("caption", event -> {
+		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		if (event.getMessage().getAttachments() == null) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Must include an attachment."));
+		} else {
+			Attachment toCaption = event.getMessage().getAttachments().get(0);
+			File cache = new File("src/main/resources/cache/caption_cache." + toCaption.getFileExtension()),
+				 output = new File("src/main/resources/cache/caption." + toCaption.getFileExtension());
+			try {
+				FileUtils.copyURLToFile(new URL(toCaption.getProxyUrl()), cache);
+				BufferedImage origin = ImageIO.read(cache);
+				int x = origin.getWidth();
+				int y = origin.getHeight();
+				BufferedImage resized = Functions.Rendering.resizeCanvas(origin, x, y + y / 5, false);
+				Graphics2D renderCaption = resized.createGraphics();
+				renderCaption.fillRect(0, 0, x, y / 5);
+				if (args.length > 1) {
+					String draw = "";
+					for (int i = 1; i < args.length; i++) {
+						draw += args[i];
+					}
+					renderCaption.drawString(draw, x / 2, y / 10); //TODO get impact font displaying centered on caption
+				}
+				renderCaption.dispose();
+				ImageIO.write(resized, toCaption.getFileExtension(), output);
+			} catch (IOException e) {e.printStackTrace();}
+			
+			Functions.Messages.sendFile(event.getChannel(), output);
+		}
+	});
+	
+	public static final Command MC_SERVER = register("mc", event -> {
+		try {
+			CloseableHttpClient client = HttpClients.createDefault();
+			HttpGet get = new HttpGet("https://api.mcsrvstat.us/2/mc.omobasil.xyz");
+			CloseableHttpResponse response = client.execute(get);
+			JsonObject obj = Json.createReader(response.getEntity().getContent()).readObject();
+			File motd = new File("src/main/resources/reusable/motd.html");
+			
+			client.close();
+			
+			Functions.Utils.writeToFile(motd, "<!DOCTYPE html>\n<html>\n" + obj.getJsonObject("motd")
+												 							   .getJsonArray("html")
+												 							   .getString(0) +
+											  "\n</html>");
+			
+			if (obj.getJsonObject("debug").getBoolean("ping")) {
+				Functions.Messages.sendEmbeded(event.getChannel(),
+						Functions.Messages.buildEmbed("Minecraft Server", new Color(0x99652e),
+								new Field("Host:", "mc.omobasil.xyz", true),
+								new Field("Port:", obj.getInt("port") + "", true),
+								new Field("Player Count:", obj.getJsonObject("players").getInt("online") + " / " +
+														   obj.getJsonObject("players").getInt("max"), false))
+						.setThumbnail("https://cdn.discordapp.com/attachments/592579994408976384/991204974170218537/server-icon.png"));
+				Functions.Messages.sendFile(event.getChannel(), motd);
+			} else {
+				Functions.Messages.sendEmbeded(event.getChannel(), 
+						Functions.Messages.buildEmbed("Minecraft Server", new Color(0xff0000),
+								new Field("Error:", "Server Offline", false)));
+			}
+		} catch (Exception e) {e.printStackTrace();}
+	});
+	
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 	public static final OwnerCommand BOT_SHUTDOWN = registerOwner("botshutdown", event -> {
@@ -303,6 +376,25 @@ public class CommandRegistry {
 	
 //////////////////////////////////////////////////////////////////////////////////////////////////
 	
+	public static final PermissionCommand CLEAR = registerPermission("clear", event -> {
+		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		if (args.length < 2) Functions.Messages.sendEmbeded(event.getChannel(), 
+				Functions.Messages.errorEmbed(event.getMessage(), "Must include an integer."));
+		else {
+			try {
+				event.getChannel().purgeMessages(event.getChannel().getHistory().retrievePast(Integer.parseInt(args[1] + 1)).complete());
+				Functions.Messages.sendEmbeded(event.getChannel(),
+						Functions.Messages.buildEmbed("Message Purge Success", new Color(0x00ff00),
+								new Field("Amount cleared:", args[1], false)));
+			} catch (IllegalArgumentException e) {
+				Functions.Messages.sendEmbeded(event.getChannel(),
+						Functions.Messages.errorEmbed(event.getMessage(), "Can only clear up to 100 messages, or messages are too old for automated deletion. Remember, your input is increased by one because of your command request."));
+			}
+		}
+	}, Permission.MESSAGE_MANAGE);
+	
+//////////////////////////////////////////////////////////////////////////////////////////////////
+	
 	@RegistryBus
 	public static void registerAll() {
 		for (Command cmd : COMMANDS) {
@@ -316,6 +408,9 @@ public class CommandRegistry {
 		for (PermissionCommand cmd : PERMISSION_COMMANDS) {
 			cmd.register();
 			System.out.println(cmd.getName() + " permission command is registered.");
-		}	
+		}
+		ALL_COMMANDS.add(COMMANDS);
+		ALL_COMMANDS.add(OWNER_COMMANDS);
+		ALL_COMMANDS.add(PERMISSION_COMMANDS);
 	}
 }

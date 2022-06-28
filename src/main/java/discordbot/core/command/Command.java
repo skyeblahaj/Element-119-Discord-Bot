@@ -1,6 +1,5 @@
 package discordbot.core.command;
 
-import discordbot.Element119;
 import discordbot.core.event.BasicEventRegistry;
 import discordbot.inter_face.ManualControl;
 import discordbot.utils.Info;
@@ -19,10 +18,6 @@ public class Command extends BasicEventRegistry {
 	@Override
 	public void onMessageReceived(MessageReceivedEvent event) {
 		if (event.getMessage().getContentRaw().startsWith(Info.PREFIX + this.name) && ManualControl.commandToggle) this.action.action(event);
-	}
-	
-	public void register() {
-		Element119.mainJDA.addEventListener(this);
 	}
 	
 	public String getName() {
