@@ -31,4 +31,8 @@ public class PermissionCommand extends Command {
 					Functions.Messages.errorEmbed(event.getMessage(), "User does not have access to use this command."));
 		}
 	}
+	
+	public Permission[] getPerms() {
+		return this.perms;
+	}
 }

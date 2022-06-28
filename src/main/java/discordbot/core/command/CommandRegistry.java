@@ -104,7 +104,17 @@ public class CommandRegistry {
 		String list = "";
 		for (List<? extends Command> l : ALL_COMMANDS) {
 			for (Command c : l) {
-				list += "\n" + c.getName();
+				if (c instanceof OwnerCommand) {
+					list += "\n(Owner Only) " + c.getName();
+				} else if (c instanceof PermissionCommand) {
+					String permsNeeded = "";
+					for (Permission p : ((PermissionCommand) c).getPerms()) {
+						permsNeeded += " (" + p.getName() + ") ";
+					}
+					list += "\nRequires:" + permsNeeded + c.getName();
+				} else {
+					list += "\n" + c.getName();
+				}
 			}
 		}
 		Functions.Messages.sendMessage(event.getChannel(), "```--Command List--" + list + "```");
@@ -293,7 +303,7 @@ public class CommandRegistry {
 	
 	public static final Command CAPTION = register("caption", event -> {
 		String[] args = Functions.Messages.multiArgs(event.getMessage());
-		if (event.getMessage().getAttachments() == null) {
+		if (event.getMessage().getAttachments().size() <= 0) {
 			Functions.Messages.sendEmbeded(event.getChannel(), 
 					Functions.Messages.errorEmbed(event.getMessage(), "Must include an attachment."));
 		} else {
