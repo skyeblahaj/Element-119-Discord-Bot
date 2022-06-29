@@ -11,6 +11,7 @@ import java.util.List;
 
 import javax.imageio.ImageIO;
 import javax.json.Json;
+import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.sound.sampled.AudioFileFormat;
 import javax.sound.sampled.AudioFormat;
@@ -42,11 +43,16 @@ import discordbot.utils.BusPassenger;
 import discordbot.utils.Functions;
 import discordbot.utils.Info;
 import discordbot.utils.RegistryBus;
+import discordbot.utils.media.AudioTypes;
+import discordbot.utils.media.ImageTypes;
+import discordbot.utils.media.MediaType;
+import discordbot.utils.media.VideoTypes;
+import net.bramp.ffmpeg.builder.FFmpegBuilder;
 import net.dv8tion.jda.api.Permission;
+import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message.Attachment;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed.Field;
-import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.managers.AudioManager;
 import se.michaelthelin.spotify.exceptions.SpotifyWebApiException;
 
@@ -128,18 +134,23 @@ public class CommandRegistry {
 					new Color(0xffffff),
 					event.getMember().getEffectiveAvatarUrl()));
 		} else if (Functions.Messages.isPinging(args[1])) {
-			User pingedUser = event.getMessage().getMentionedUsers().get(0);
+			Member pingedMember = event.getMessage().getMentionedMembers().get(0);
 			Functions.Messages.sendEmbeded(event.getChannel(),
-					Functions.Messages.buildEmbed(pingedUser.getName() + "'s Avatar",
+					Functions.Messages.buildEmbed(pingedMember.getEffectiveName() + "'s Avatar",
 					new Color(0xffffff),
-					pingedUser.getEffectiveAvatarUrl()));
+					pingedMember.getEffectiveAvatarUrl()));
 		} else if (args[1].length() > 0) {
+			String search = "";
+			for (int i = 1; i < args.length; i++) {
+				search += args[i] + " ";
+			}
+			search = search.trim();
 			try {
-				User pingedUser = event.getJDA().getUsersByName(args[1], true).get(0);
+				Member pingedMember = event.getGuild().getMembersByEffectiveName(search, true).get(0);
 				Functions.Messages.sendEmbeded(event.getChannel(),
-						Functions.Messages.buildEmbed(pingedUser.getName() + "'s Avatar",
+						Functions.Messages.buildEmbed(pingedMember.getEffectiveName() + "'s Avatar",
 						new Color(0xffffff),
-						pingedUser.getEffectiveAvatarUrl()));
+						pingedMember.getEffectiveAvatarUrl()));
 			} catch (IndexOutOfBoundsException e) {Functions.Messages.sendEmbeded(event.getChannel(), Functions.Messages.errorEmbed(event.getMessage(), "Could not grab avatar."));}
 			
 		} else Functions.Messages.sendEmbeded(event.getChannel(), Functions.Messages.errorEmbed(event.getMessage(), "Could not grab avatar."));
@@ -349,12 +360,21 @@ public class CommandRegistry {
 											  "\n</html>");
 			
 			if (obj.getJsonObject("debug").getBoolean("ping")) {
+				int playerCount = obj.getJsonObject("players").getInt("online");
+				String players = "";
+				if (playerCount > 0) {
+					JsonArray list = obj.getJsonObject("players").getJsonArray("list");
+					for (int i = 0; i < list.size(); i++) {
+						players += list.getString(i) + "\n";
+					}
+				}
 				Functions.Messages.sendEmbeded(event.getChannel(),
 						Functions.Messages.buildEmbed("Minecraft Server", new Color(0x99652e),
 								new Field("Host:", "mc.omobasil.xyz", true),
 								new Field("Port:", obj.getInt("port") + "", true),
-								new Field("Player Count:", obj.getJsonObject("players").getInt("online") + " / " +
-														   obj.getJsonObject("players").getInt("max"), false))
+								new Field("Player Count:", playerCount + " / " +
+														   obj.getJsonObject("players").getInt("max"), false),
+								(playerCount > 0) ? new Field("Players:", players, false) : null)
 						.setThumbnail("https://cdn.discordapp.com/attachments/592579994408976384/991204974170218537/server-icon.png"));
 				Functions.Messages.sendFile(event.getChannel(), motd);
 			} else {
@@ -363,6 +383,135 @@ public class CommandRegistry {
 								new Field("Error:", "Server Offline", false)));
 			}
 		} catch (Exception e) {e.printStackTrace();}
+	});
+	
+	public static final Command CONVERT = register("convert", event -> {
+		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		
+		if (args.length < 2) Functions.Messages.sendEmbeded(event.getChannel(), Functions.Messages.errorEmbed(event.getMessage(), "Must include a file format."));
+		else {
+			
+			new Thread(() -> {
+				List<Attachment> attachments = event.getMessage().getAttachments();
+				if (attachments.size() <= 0) Functions.Messages.sendEmbeded(event.getChannel(),
+						Functions.Messages.errorEmbed(event.getMessage(), "Must include an attachment."));
+				else {
+					Attachment toConvert = attachments.get(0);
+					if (toConvert.getSize() < 10485760) {
+						File input = new File("src/main/resources/cache/convert_input." + toConvert.getFileExtension());
+						toConvert.downloadToFile(input);
+						String output = "src/main/resources/cache/convert_output." + args[1];
+						MediaType format = MediaType.findFormat(toConvert.getFileExtension());
+						
+						FFmpegBuilder builder = null;
+						try {
+							builder = new FFmpegBuilder()
+									.overrideOutputFiles(true)
+									.setInput(Info.FFPROBE.probe(input.getPath()));
+						} catch (IOException e) {}
+						
+						if (format instanceof VideoTypes) {
+							
+							String codec = "";
+							switch (args[1].toLowerCase()) {
+							case "mp4" -> codec = "libx264";
+							case "webm" -> codec = "libvpx";
+							case "flv" -> codec = "flv";
+							case "gif" -> codec = "gif";
+							default -> codec = "libx264"; //good for most
+							}
+							
+							if (codec.equals("flv")) Functions.Messages.sendEmbeded(event.getChannel(),
+									Functions.Messages.errorEmbed(event.getMessage(), "Format is currently not supported."));
+							else {
+								builder.addOutput(output)
+								   .setFormat(args[1])
+								   .setTargetSize(2_000_000) //2mb
+								   .disableSubtitle()
+								   .setAudioChannels(2)
+								   .setAudioCodec("opus")
+								   .setAudioSampleRate(48_000) //48khz
+								   .setAudioBitRate(32768) //32kb/s
+								   .setVideoCodec(codec)
+								   .setVideoFrameRate(40, 1)
+								   .setStrict(FFmpegBuilder.Strict.EXPERIMENTAL).done();
+							try {
+								Info.FFMPEG_EXECUTOR.createTwoPassJob(builder).run();
+								Functions.Messages.sendFileReply(event.getMessage(), new File(output));
+							} catch (RuntimeException e) {
+								Functions.Messages.sendEmbeded(event.getChannel(),
+										Functions.Messages.errorEmbed(event.getMessage(), "Internal Server Error. Check to see if you provided the correct format. If so, something went wrong on the back-end."));
+							}
+							}
+						}
+						else if (format instanceof AudioTypes) {
+							String codec = "aac"; //supercodec
+							builder.addOutput(output)
+								.setFormat(args[1])
+								.setTargetSize(10_000)
+								.setAudioChannels(2)
+								.setAudioCodec(codec)
+								.setAudioSampleRate(48_000)
+								.setAudioBitRate(32768)
+								.setStrict(FFmpegBuilder.Strict.EXPERIMENTAL).done();
+							
+							try {
+								Info.FFMPEG_EXECUTOR.createTwoPassJob(builder).run();
+								Functions.Messages.sendFileReply(event.getMessage(), new File(output));
+							} catch (RuntimeException e) {
+								Functions.Messages.sendEmbeded(event.getChannel(),
+										Functions.Messages.errorEmbed(event.getMessage(), "Internal Server Error. Check to see if you provided the correct format. If so, something went wrong on the back-end."));
+							}
+						}
+						else if (format instanceof ImageTypes) {
+							
+						} else Functions.Messages.sendEmbeded(event.getChannel(), 
+								Functions.Messages.errorEmbed(event.getMessage(), "Could not find a media type surrounding the given file extension."));
+					} else Functions.Messages.sendEmbeded(event.getChannel(), 
+							Functions.Messages.errorEmbed(event.getMessage(), "Attachment must be under 10MB"));
+				}
+			}).start();
+		}
+	});
+	
+	public static final Command SHOW_PERMISSIONS = register("showperms", event -> {
+		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		String perms = "";
+		if (args.length < 2) {
+			for (Permission p : event.getMember().getPermissions()) {
+				perms += "\n" + p.getName();
+			}
+			Functions.Messages.sendEmbeded(event.getChannel(),
+					Functions.Messages.buildEmbed(event.getMember().getNickname() + "'s Permissions",
+					new Color(0xffffff),
+					new Field("List of Perms:", perms, false)));
+		} else if (Functions.Messages.isPinging(args[1])) {
+			Member pingedMember = event.getMessage().getMentionedMembers().get(0);
+			for (Permission p : pingedMember.getPermissions()) {
+				perms += "\n" + p.getName();
+			}
+			Functions.Messages.sendEmbeded(event.getChannel(),
+					Functions.Messages.buildEmbed(pingedMember.getEffectiveName() + "'s Permissions",
+					new Color(0xffffff),
+					new Field("List of Perms:", perms, false)));
+		} else if (args[1].length() > 0) {
+			String search = "";
+			for (int i = 1; i < args.length; i++) {
+				search += args[i] + " ";
+			}
+			search = search.trim();
+			try {
+				Member pingedMember = event.getGuild().getMembersByEffectiveName(search, true).get(0);
+				for (Permission p : pingedMember.getPermissions()) {
+					perms += "\n" + p.getName();
+				}
+				Functions.Messages.sendEmbeded(event.getChannel(),
+						Functions.Messages.buildEmbed(pingedMember.getEffectiveName() + "'s Permissions",
+						new Color(0xffffff),
+						new Field("List of Perms:", perms, false)));
+			} catch (IndexOutOfBoundsException e) {Functions.Messages.sendEmbeded(event.getChannel(), Functions.Messages.errorEmbed(event.getMessage(), "Could not grab permissions."));}
+			
+		} else Functions.Messages.sendEmbeded(event.getChannel(), Functions.Messages.errorEmbed(event.getMessage(), "Could not grab permissions."));
 	});
 	
 //////////////////////////////////////////////////////////////////////////////////////////////////

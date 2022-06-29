@@ -8,4 +8,8 @@
 *.gif
 *.jpg
 *.mp3
+*.log
+*.flv
+*.webm
+*.mov
 motd.html

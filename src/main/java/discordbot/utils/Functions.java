@@ -99,6 +99,10 @@ public class Functions{
 			channel.sendFile(f).queue();
 		}
 		
+		public static void sendFileReply(Message message, File f) {
+			message.reply(f).queue();
+		}
+		
 		public static void addReaction(Message msg, Emote e) {
 			msg.addReaction(e).complete();
 		}

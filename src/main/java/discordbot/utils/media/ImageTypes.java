@@ -1,17 +1,18 @@
 package discordbot.utils.media;
 
-public enum ImageTypes {
+public enum ImageTypes implements MediaType {
 
-	PNG, JPG, WEBP, JPEG, BMP, GIF(true);
+	PNG, JPG, WEBP, JPEG, BMP, GIF, EMPTY;
 	
-	private final boolean isAnimated;
+	private final String extension;
 	
-	ImageTypes() {
-		this.isAnimated = false;
+	ImageTypes(){
+		this.extension = this.name().toLowerCase();
 	}
-	
-	ImageTypes(boolean anim){
-		this.isAnimated = anim;
+
+	@Override
+	public String getExtension() {
+		return this.extension;
 	}
 	
 }
