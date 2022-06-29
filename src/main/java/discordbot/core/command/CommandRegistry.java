@@ -188,9 +188,12 @@ public class CommandRegistry {
 				    AudioFormat format = new AudioFormat(44100, 16, 1, true, true);
 					AudioInputStream in = AudioSystem.getAudioInputStream(rawFile);
 					AudioInputStream convert = AudioSystem.getAudioInputStream(format, in);
-					AudioSystem.write(convert, AudioFileFormat.Type.WAVE, new File("src/main/resources/cache/tts16Bit.wav"));
+					File bit16 = new File("src/main/resources/cache/tts16Bit.wav");
+					AudioSystem.write(convert, AudioFileFormat.Type.WAVE, bit16);
 					in.close();
 					convert.close();
+					
+					Functions.Messages.sendFileReply(event.getMessage(), bit16);
 					
 					//TODO continue this code when lavaplayer is implemented
 					
