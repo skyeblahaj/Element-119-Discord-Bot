@@ -429,7 +429,7 @@ public class CommandRegistry {
 							else {
 								builder.addOutput(output)
 								   .setFormat(args[1])
-								   .setTargetSize(2_000_000) //2mb
+								   .setTargetSize(5_000_000) //2mb
 								   .disableSubtitle()
 								   .setAudioChannels(2)
 								   .setAudioCodec("opus")
