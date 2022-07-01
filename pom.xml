@@ -12,7 +12,7 @@
 			<artifactId>reflections</artifactId>
 			<version>0.10.2</version>
 		</dependency>
-		
+
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>

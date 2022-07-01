@@ -17,6 +17,7 @@ import javax.sound.sampled.AudioFileFormat;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.UnsupportedAudioFileException;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.hc.core5.http.ParseException;
@@ -36,6 +37,8 @@ import discordbot.Element119;
 import discordbot.core.audio.GuildMusicManager;
 import discordbot.core.audio.PlayerManager;
 import discordbot.core.audio.spotify.LinkConverter;
+import discordbot.core.render.Converter;
+import discordbot.core.render.IllegalMediaFormatException;
 import discordbot.core.render.ImageLayerer;
 import discordbot.core.render.Scaler;
 import discordbot.inter_face.ManualControl;
@@ -43,11 +46,7 @@ import discordbot.utils.BusPassenger;
 import discordbot.utils.Functions;
 import discordbot.utils.Info;
 import discordbot.utils.RegistryBus;
-import discordbot.utils.media.AudioTypes;
-import discordbot.utils.media.ImageTypes;
 import discordbot.utils.media.MediaType;
-import discordbot.utils.media.VideoTypes;
-import net.bramp.ffmpeg.builder.FFmpegBuilder;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message.Attachment;
@@ -391,87 +390,36 @@ public class CommandRegistry {
 	public static final Command CONVERT = register("convert", event -> {
 		String[] args = Functions.Messages.multiArgs(event.getMessage());
 		
-		if (args.length < 2) Functions.Messages.sendEmbeded(event.getChannel(), Functions.Messages.errorEmbed(event.getMessage(), "Must include a file format."));
+		if (args.length < 2)
+			Functions.Messages.sendEmbeded(event.getChannel(),
+					Functions.Messages.errorEmbed(event.getMessage(), "Must include a file format."));
 		else {
-			
 			new Thread(() -> {
 				List<Attachment> attachments = event.getMessage().getAttachments();
-				if (attachments.size() <= 0) Functions.Messages.sendEmbeded(event.getChannel(),
-						Functions.Messages.errorEmbed(event.getMessage(), "Must include an attachment."));
+				if (attachments.size() <= 0)
+					Functions.Messages.sendEmbeded(event.getChannel(),
+							Functions.Messages.errorEmbed(event.getMessage(), "Must include an attachment."));
 				else {
 					Attachment toConvert = attachments.get(0);
 					if (toConvert.getSize() < 10485760) {
 						File input = new File("src/main/resources/cache/convert_input." + toConvert.getFileExtension());
 						toConvert.downloadToFile(input);
-						String output = "src/main/resources/cache/convert_output." + args[1];
-						MediaType format = MediaType.findFormat(toConvert.getFileExtension());
-						
-						FFmpegBuilder builder = null;
+
 						try {
-							builder = new FFmpegBuilder()
-									.overrideOutputFiles(true)
-									.setInput(Info.FFPROBE.probe(input.getPath()));
+							Converter convertTool = new Converter(input);
+							convertTool.convert(MediaType.findFormat(args[1]));
+							Functions.Messages.sendFileReply(event.getMessage(), convertTool.getOutputFile());
+						} catch (IllegalMediaFormatException e) {
+							Functions.Messages.sendEmbeded(event.getChannel(), Functions.Messages.errorEmbed(
+									event.getMessage(), "Format provided does not support the media type provided."));
+						} catch (UnsupportedAudioFileException e) {
+							Functions.Messages.sendEmbeded(event.getChannel(), Functions.Messages.errorEmbed(
+									event.getMessage(), "Format provided is not supported."));
 						} catch (IOException e) {}
-						
-						if (format instanceof VideoTypes) {
-							
-							String codec = "";
-							switch (args[1].toLowerCase()) {
-							case "mp4" -> codec = "libx264";
-							case "webm" -> codec = "libvpx";
-							case "flv" -> codec = "flv";
-							case "gif" -> codec = "gif";
-							default -> codec = "libx264"; //good for most
-							}
-							
-							if (codec.equals("flv")) Functions.Messages.sendEmbeded(event.getChannel(),
-									Functions.Messages.errorEmbed(event.getMessage(), "Format is currently not supported."));
-							else {
-								builder.addOutput(output)
-								   .setFormat(args[1])
-								   .setTargetSize(5_000_000) //2mb
-								   .disableSubtitle()
-								   .setAudioChannels(2)
-								   .setAudioCodec("opus")
-								   .setAudioSampleRate(48_000) //48khz
-								   .setAudioBitRate(32768) //32kb/s
-								   .setVideoCodec(codec)
-								   .setVideoFrameRate(40, 1)
-								   .setStrict(FFmpegBuilder.Strict.EXPERIMENTAL).done();
-							try {
-								Info.FFMPEG_EXECUTOR.createTwoPassJob(builder).run();
-								Functions.Messages.sendFileReply(event.getMessage(), new File(output));
-							} catch (RuntimeException e) {
-								Functions.Messages.sendEmbeded(event.getChannel(),
-										Functions.Messages.errorEmbed(event.getMessage(), "Internal Server Error. Check to see if you provided the correct format. If so, something went wrong on the back-end."));
-							}
-							}
-						}
-						else if (format instanceof AudioTypes) {
-							String codec = "aac"; //supercodec
-							builder.addOutput(output)
-								.setFormat(args[1])
-								.setTargetSize(10_000)
-								.setAudioChannels(2)
-								.setAudioCodec(codec)
-								.setAudioSampleRate(48_000)
-								.setAudioBitRate(32768)
-								.setStrict(FFmpegBuilder.Strict.EXPERIMENTAL).done();
-							
-							try {
-								Info.FFMPEG_EXECUTOR.createTwoPassJob(builder).run();
-								Functions.Messages.sendFileReply(event.getMessage(), new File(output));
-							} catch (RuntimeException e) {
-								Functions.Messages.sendEmbeded(event.getChannel(),
-										Functions.Messages.errorEmbed(event.getMessage(), "Internal Server Error. Check to see if you provided the correct format. If so, something went wrong on the back-end."));
-							}
-						}
-						else if (format instanceof ImageTypes) {
-							
-						} else Functions.Messages.sendEmbeded(event.getChannel(), 
-								Functions.Messages.errorEmbed(event.getMessage(), "Could not find a media type surrounding the given file extension."));
-					} else Functions.Messages.sendEmbeded(event.getChannel(), 
-							Functions.Messages.errorEmbed(event.getMessage(), "Attachment must be under 10MB"));
+					} else {
+						Functions.Messages.sendEmbeded(event.getChannel(), 
+								Functions.Messages.errorEmbed(event.getMessage(), "Please keep input files below 10 MB."));
+					}
 				}
 			}).start();
 		}

@@ -2,7 +2,7 @@ package discordbot.utils.media;
 
 public enum ImageTypes implements MediaType {
 
-	PNG, JPG, WEBP, JPEG, BMP, GIF, EMPTY;
+	PNG, JPG, WEBP, JPEG, BMP, GIF;
 	
 	private final String extension;
 	

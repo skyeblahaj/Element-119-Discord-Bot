@@ -12,12 +12,14 @@ import com.sedmelluq.discord.lavaplayer.tools.FriendlyException;
 import com.sedmelluq.discord.lavaplayer.track.AudioPlaylist;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 
+import discordbot.utils.BusPassenger;
 import discordbot.utils.Functions;
 import discordbot.utils.RegistryBus;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageEmbed.Field;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
+@BusPassenger
 public class PlayerManager {
 
 	private static PlayerManager INSTANCE;

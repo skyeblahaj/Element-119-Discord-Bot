@@ -21,6 +21,7 @@ import net.dv8tion.jda.api.entities.Emote;
 import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed.Field;
+import net.dv8tion.jda.api.requests.restaction.MessageAction;
 
 public class Functions{
 
@@ -95,12 +96,22 @@ public class Functions{
 			channel.sendMessage(s).queue();
 		}
 		
+		public static void sendMessageReply(Message message, String s) {
+			message.reply(s);
+		}
+		
 		public static void sendFile(MessageChannel channel, File f) {
 			channel.sendFile(f).queue();
 		}
 		
 		public static void sendFileReply(Message message, File f) {
-			message.reply(f).queue();
+			MessageAction perform = message.reply(f);
+			try {
+				perform.queue();
+			} catch (Exception e) {
+				sendEmbededReply(message,
+						errorEmbed(message, "File size is too large."));
+			}
 		}
 		
 		public static void addReaction(Message msg, Emote e) {
@@ -113,6 +124,10 @@ public class Functions{
 		
 		public static void sendEmbeded(MessageChannel channel, EmbedBuilder b, File file) {
 			channel.sendFile(file).setEmbeds(b.build()).queue();
+		}
+		
+		public static void sendEmbededReply(Message message, EmbedBuilder b) {
+			message.replyEmbeds(b.build()).queue();
 		}
 		
 		public static EmbedBuilder buildEmbed(String title, Color color, Field... fields) {
