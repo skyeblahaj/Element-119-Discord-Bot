@@ -12,4 +12,6 @@
 *.flv
 *.webm
 *.mov
+*.aiff
+*.aifc
 motd.html
