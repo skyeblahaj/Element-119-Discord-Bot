@@ -507,14 +507,18 @@ public class CommandRegistry {
 
 	public static final OwnerCommand BOT_SHUTDOWN = registerOwner("botshutdown", event -> {
 		Functions.Messages.sendMessage(event.getChannel(), "Bot is shutting down...");
+		try {
+			Thread.sleep(1500);
+		} catch (InterruptedException e) {e.printStackTrace();}
 		System.exit(0);
 	});
 	
 	public static final OwnerCommand SYSTEM_SHUTDOWN = registerOwner("systemshutdown", event -> {
 		Functions.Messages.sendMessage(event.getChannel(), "System is shutting down...");
 		try {
+			Thread.sleep(1500);
 			Runtime.getRuntime().exec("shutdown -s -t 0"); //win10 only
-		} catch (IOException e) {}
+		} catch (IOException | InterruptedException e) {e.printStackTrace();}
 	});
 	
 	public static final OwnerCommand MANUAL_CONTROL = registerOwner("takeover", event -> {

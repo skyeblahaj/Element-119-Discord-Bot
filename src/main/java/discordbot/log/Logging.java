@@ -17,8 +17,11 @@ public class Logging extends BasicEventRegistry {
 						event.getMessage().getContentRaw() + '\n');
 		
 		//command exceptions
-		if (event.getMessage().getContentRaw().equals(Info.PREFIX)) {
-			Functions.Messages.sendEmbeded(event.getChannel(), Functions.Messages.buildEmbed("Commands", new Color(0x0000ff), new Field("To get started:", "Use '" + Info.PREFIX + "commands'", false)));
-		};
+		switch (event.getMessage().getContentRaw()) {
+		case Info.PREFIX -> Functions.Messages.sendEmbeded(event.getChannel(), 
+				Functions.Messages.buildEmbed("Commands", new Color(0x0000ff), 
+						new Field("To get started:", "Use '" + Info.PREFIX + "commands'", false)));
+		case "bug" -> Functions.Messages.sendMessage(event.getChannel(), "Report bugs to: https://github.com/skyeblahaj/Element-119-Discord-Bot");
+		}
 	}
 }
