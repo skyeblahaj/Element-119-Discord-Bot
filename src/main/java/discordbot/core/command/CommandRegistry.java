@@ -12,6 +12,7 @@ import java.util.List;
 import javax.imageio.ImageIO;
 import javax.json.Json;
 import javax.json.JsonArray;
+import javax.json.JsonException;
 import javax.json.JsonObject;
 import javax.sound.sampled.AudioFileFormat;
 import javax.sound.sampled.AudioFormat;
@@ -27,6 +28,7 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
+import org.apache.http.message.BasicHeader;
 
 import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.SearchResult;
@@ -37,6 +39,7 @@ import discordbot.Element119;
 import discordbot.core.audio.GuildMusicManager;
 import discordbot.core.audio.PlayerManager;
 import discordbot.core.audio.spotify.LinkConverter;
+import discordbot.core.network.PostRequester;
 import discordbot.core.render.Converter;
 import discordbot.core.render.IllegalMediaFormatException;
 import discordbot.core.render.ImageLayerer;
@@ -49,6 +52,7 @@ import discordbot.utils.RegistryBus;
 import discordbot.utils.media.MediaType;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.Message.Attachment;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed.Field;
@@ -463,6 +467,50 @@ public class CommandRegistry {
 			} catch (IndexOutOfBoundsException e) {Functions.Messages.sendEmbeded(event.getChannel(), Functions.Messages.errorEmbed(event.getMessage(), "Could not grab permissions."));}
 			
 		} else Functions.Messages.sendEmbeded(event.getChannel(), Functions.Messages.errorEmbed(event.getMessage(), "Could not grab permissions."));
+	});
+	
+	public static final Command RANDOM = register("random", event -> {
+		String output = "";
+		int charAmount = Functions.RANDOM.nextInt(150) + 1;
+		char[] data = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
+		for (int i = 0; i < charAmount; i++) {
+			output += (Functions.RANDOM.nextBoolean()) ? data[Functions.RANDOM.nextInt(data.length)] : Character.toUpperCase(data[Functions.RANDOM.nextInt(data.length)]);
+		}
+		Functions.Messages.sendMessage(event.getChannel(), output);
+	});
+	
+	public static final Command CRAIYON = register("craiyon", event -> {
+		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		Functions.Messages.sendEmbeded(event.getChannel(), 
+				Functions.Messages.buildEmbed("Craiyon API", new Color(0xff5500),
+						new Field("Generating...", "This may take a few minutes.", false)));
+		new Thread(() -> {
+			Message cachedMessage = event.getMessage();
+			PostRequester httpTool = new PostRequester("http://backend.craiyon.com/generate");
+			String userInput = "";
+			for (int i = 1; i < args.length; i++) {
+				userInput += " " + args[i];
+			}
+			try {
+				CloseableHttpResponse response = httpTool.post("{\"prompt\":\"" + userInput.trim() + "\"}", 
+						new BasicHeader("accept", "application/json"),
+						new BasicHeader("content-type", "application/json"));
+				JsonObject data;
+				int timeout = 0;
+				while (true) {
+					try {
+						data = Functions.Network.getJSON(response);
+						break;
+					} catch (JsonException e) {
+						System.out.println("not ready");
+						timeout++;
+						Thread.sleep(5000);
+					}
+					if (timeout >= 36) break;
+				}
+				httpTool.close();
+			} catch (IOException | InterruptedException e) {e.printStackTrace();}
+		}).start();
 	});
 	
 //////////////////////////////////////////////////////////////////////////////////////////////////

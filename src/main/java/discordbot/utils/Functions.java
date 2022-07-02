@@ -12,6 +12,11 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Random;
 
+import javax.json.Json;
+import javax.json.JsonObject;
+
+import org.apache.http.client.methods.CloseableHttpResponse;
+
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.services.youtube.YouTube;
@@ -183,5 +188,13 @@ public class Functions{
 			}
 			return out;
 		}
+	}
+	
+	public static class Network { //http utils
+		
+		public static JsonObject getJSON(CloseableHttpResponse resp) throws RuntimeException, IOException {
+			return Json.createReader(resp.getEntity().getContent()).readObject();
+		}
+		
 	}
 }

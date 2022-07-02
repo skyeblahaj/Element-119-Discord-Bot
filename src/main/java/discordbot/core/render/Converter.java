@@ -10,6 +10,7 @@ import javax.sound.sampled.UnsupportedAudioFileException;
 
 import org.apache.commons.io.FilenameUtils;
 
+import de.sciss.jump3r.Main;
 import discordbot.utils.Info;
 import discordbot.utils.media.AudioTypes;
 import discordbot.utils.media.ImageTypes;
@@ -54,22 +55,47 @@ public class Converter {
 			
 		} else if (type instanceof AudioTypes && MediaType.findFormat(FilenameUtils.getExtension(this.file.getPath())) instanceof AudioTypes) {
 			Type format = null;
+			boolean mp3 = false;
 			switch ((AudioTypes)type) {
 			case AIFC -> format = Type.AIFC;
 			case WAV -> format = Type.WAVE;
 			case AIFF -> format = Type.AIFF;
-			default -> format = Type.WAVE;
+			case MP3 -> mp3 = true;
+			default -> mp3 = true;
 			}
-			AudioInputStream ais = AudioSystem.getAudioInputStream(this.file);
-			ais.reset();
-			AudioSystem.write(ais, format, getOutputFile());
-			ais.close();
+			if (mp3) {
+				
+				toMP3(this.file, getOutputFile());
+				
+			} else {
+				AudioInputStream ais = AudioSystem.getAudioInputStream(this.file);
+				ais.reset();
+				AudioSystem.write(ais, format, getOutputFile());
+				ais.close();
+			}
 		} else if (type instanceof ImageTypes && MediaType.findFormat(FilenameUtils.getExtension(this.file.getPath())) instanceof ImageTypes) {
 			
 			
 			
 		} else throw new IllegalMediaFormatException("Cannot find a media type related to file extension.");
 	}
+	
+	private static void toMP3(File source, File output) throws IOException {
+		String[] cmdArgs = {"--preset", "standard", "-q", "0", "-m", "s",
+				source.getAbsolutePath(), output.getAbsolutePath()};
+		new Main().run(cmdArgs);
+	}
+	
+	/*private static void fromMP3(File source, File output) throws IOException, UnsupportedAudioFileException {
+		AudioInputStream raw = AudioSystem.getAudioInputStream(source);
+		AudioFormat sourceFormat = raw.getFormat();
+		AudioFormat outputFormat = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED,
+				sourceFormat.getSampleRate(), 16, sourceFormat.getChannels(),
+				sourceFormat.getChannels() * 2, sourceFormat.getSampleRate(), false);
+		
+		final AudioInputStream sourceStream = AudioSystem.getAudioInputStream(outputFormat, raw);
+		final AudioInputStream streamer = AudioSystem.getAudioInputStream(sourceStream);
+	}*/
 	
 	public File getOutputFile() {
 		return new File(this.outputPath);
