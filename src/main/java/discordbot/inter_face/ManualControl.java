@@ -48,13 +48,13 @@ public class ManualControl {
 			} catch (IOException e) {e.printStackTrace();}
 			this.setResizable(false);
 			this.getContentPane().setLayout(new GridLayout(2, 2));
-			JTextField input = new JTextField(),
+			JTextField inventory = new JTextField(),
 					guildID = new JTextField();
-			this.getContentPane().add(new JPanel().add(input));
+			this.getContentPane().add(new JPanel().add(inventory));
 			this.getContentPane().add(new JPanel().add(guildID));
 			JButton send = new JButton("Send to Channel");
 			send.addActionListener(e -> {
-				Functions.Messages.sendMessage(Element119.mainJDA.getTextChannelById(guildID.getText()), input.getText());
+				Functions.Messages.sendMessage(Element119.mainJDA.getTextChannelById(guildID.getText()), inventory.getText());
 			});
 			this.getContentPane().add(new JPanel().add(send));
 			JButton settings = new JButton("Settings");

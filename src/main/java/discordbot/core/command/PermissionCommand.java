@@ -19,10 +19,12 @@ public class PermissionCommand extends Command {
 	public void onMessageReceived(MessageReceivedEvent event) {
 		boolean msgBool = event.getMessage().getContentRaw().startsWith(Info.PREFIX + this.name);
 		boolean isAllowed = true;
-		for (Permission p : this.perms) {
-			if (!event.getMember().hasPermission(p)) {
-				isAllowed = false;
-				break;
+		if (msgBool) {
+			for (Permission p : this.perms) {
+				if (!event.getMember().hasPermission(p)) {
+					isAllowed = false;
+					break;
+				}
 			}
 		}
 		if (msgBool && isAllowed && ManualControl.commandToggle) this.action.action(event);

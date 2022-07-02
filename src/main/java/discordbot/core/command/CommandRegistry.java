@@ -10,24 +10,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 import javax.imageio.ImageIO;
-import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonException;
 import javax.json.JsonObject;
-import javax.sound.sampled.AudioFileFormat;
 import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.UnsupportedAudioFileException;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.hc.core5.http.ParseException;
 import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicHeader;
 
 import com.google.api.services.youtube.YouTube;
@@ -39,6 +30,7 @@ import discordbot.Element119;
 import discordbot.core.audio.GuildMusicManager;
 import discordbot.core.audio.PlayerManager;
 import discordbot.core.audio.spotify.LinkConverter;
+import discordbot.core.network.GetRequester;
 import discordbot.core.network.PostRequester;
 import discordbot.core.render.Converter;
 import discordbot.core.render.IllegalMediaFormatException;
@@ -49,10 +41,10 @@ import discordbot.utils.BusPassenger;
 import discordbot.utils.Functions;
 import discordbot.utils.Info;
 import discordbot.utils.RegistryBus;
+import discordbot.utils.media.AudioTypes;
 import discordbot.utils.media.MediaType;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.Message.Attachment;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed.Field;
@@ -167,34 +159,33 @@ public class CommandRegistry {
 				if (args.length < 3) Functions.Messages.sendEmbeded(event.getChannel(),
 						Functions.Messages.errorEmbed(event.getMessage(), "Not enough parameters."));
 				else {
-					CloseableHttpClient client = HttpClients.createDefault();
-					HttpPost httpPost = new HttpPost("http://api.15.ai/app/getAudioFile5");
+					PostRequester httpTool = new PostRequester("http://api.15.ai/app/getAudioFile5");
 					
 					//exceptions
 					args[1] = (String) Functions.Utils.capitalize(args[1]);
 					if (args[1].equalsIgnoreCase("spongebob")) args[1] = "SpongeBob SquarePants";
-					
 					//
+					
 					String input = "";
 					for (int i = 2; i < args.length; i++) {
 						input += args[i];
 					}
 					
-					httpPost.setEntity(new StringEntity(String.format("{\"character\":\"%s\",\"emotion\":\"Contextual\",\"text\":\"%s\"}", args[1], input)));
-					httpPost.setHeader("Accept", "application/json");
-				    httpPost.setHeader("Content-type", "application/json");
+					CloseableHttpResponse resp = httpTool.post(String.format("{\"character\":\"%s\",\"emotion\":\"Contextual\",\"text\":\"%s\"}", args[1], input), 
+							new BasicHeader("accept", "application/json"),
+							new BasicHeader("content-type", "application/json"));
+					JsonObject obj = Functions.Network.getJSON(resp);
+					httpTool.close();
+					
 				    File rawFile = new File("src/main/resources/cache/ttsRaw.wav");
-				    CloseableHttpResponse resp = client.execute(httpPost);
-				    JsonObject obj = Json.createReader(resp.getEntity().getContent()).readObject();
+				    File bit16 = new File("src/main/resources/cache/tts16Bit.wav");
 				    String wavFile = "https://cdn.15.ai/audio/" + obj.getJsonArray("wavNames").getString(0);
 				    FileUtils.copyURLToFile(new URL(wavFile), rawFile);
+				    
 				    AudioFormat format = new AudioFormat(44100, 16, 1, true, true);
-					AudioInputStream in = AudioSystem.getAudioInputStream(rawFile);
-					AudioInputStream convert = AudioSystem.getAudioInputStream(format, in);
-					File bit16 = new File("src/main/resources/cache/tts16Bit.wav");
-					AudioSystem.write(convert, AudioFileFormat.Type.WAVE, bit16);
-					in.close();
-					convert.close();
+				    Converter convertTool = new Converter(rawFile);
+				    
+				    convertTool.convert(AudioTypes.WAV, format, bit16);
 					
 					Functions.Messages.sendFileReply(event.getMessage(), bit16);
 					
@@ -352,14 +343,12 @@ public class CommandRegistry {
 	
 	public static final Command MC_SERVER = register("mc", event -> {
 		try {
-			CloseableHttpClient client = HttpClients.createDefault();
-			HttpGet get = new HttpGet("https://api.mcsrvstat.us/2/mc.omobasil.xyz");
-			CloseableHttpResponse response = client.execute(get);
-			JsonObject obj = Json.createReader(response.getEntity().getContent()).readObject();
+			GetRequester httpTool = new GetRequester("https://api.mcsrvstat.us/2/mc.omobasil.xyz");
+			JsonObject obj = Functions.Network.getJSON(httpTool.get());
+			
+			httpTool.close();
+			
 			File motd = new File("src/main/resources/reusable/motd.html");
-			
-			client.close();
-			
 			Functions.Utils.writeToFile(motd, "<!DOCTYPE html>\n<html>\n" + obj.getJsonObject("motd")
 												 							   .getJsonArray("html")
 												 							   .getString(0) +
@@ -406,12 +395,12 @@ public class CommandRegistry {
 				else {
 					Attachment toConvert = attachments.get(0);
 					if (toConvert.getSize() < 10485760) {
-						File input = new File("src/main/resources/cache/convert_input." + toConvert.getFileExtension());
-						toConvert.downloadToFile(input);
+						File inventory = new File("src/main/resources/cache/convert_inventory." + toConvert.getFileExtension());
+						toConvert.downloadToFile(inventory);
 
 						try {
-							Converter convertTool = new Converter(input);
-							convertTool.convert(MediaType.findFormat(args[1]));
+							Converter convertTool = new Converter(inventory);
+							convertTool.convert(MediaType.findFormat(args[1]), null, null);
 							Functions.Messages.sendFileReply(event.getMessage(), convertTool.getOutputFile());
 						} catch (IllegalMediaFormatException e) {
 							Functions.Messages.sendEmbeded(event.getChannel(), Functions.Messages.errorEmbed(
@@ -422,7 +411,7 @@ public class CommandRegistry {
 						} catch (IOException e) {}
 					} else {
 						Functions.Messages.sendEmbeded(event.getChannel(), 
-								Functions.Messages.errorEmbed(event.getMessage(), "Please keep input files below 10 MB."));
+								Functions.Messages.errorEmbed(event.getMessage(), "Please keep inventory files below 10 MB."));
 					}
 				}
 			}).start();
@@ -485,7 +474,7 @@ public class CommandRegistry {
 				Functions.Messages.buildEmbed("Craiyon API", new Color(0xff5500),
 						new Field("Generating...", "This may take a few minutes.", false)));
 		new Thread(() -> {
-			Message cachedMessage = event.getMessage();
+			//Message cachedMessage = event.getMessage();
 			PostRequester httpTool = new PostRequester("http://backend.craiyon.com/generate");
 			String userInput = "";
 			for (int i = 1; i < args.length; i++) {
@@ -495,7 +484,7 @@ public class CommandRegistry {
 				CloseableHttpResponse response = httpTool.post("{\"prompt\":\"" + userInput.trim() + "\"}", 
 						new BasicHeader("accept", "application/json"),
 						new BasicHeader("content-type", "application/json"));
-				JsonObject data;
+				JsonObject data = null;
 				int timeout = 0;
 				while (true) {
 					try {
@@ -509,6 +498,7 @@ public class CommandRegistry {
 					if (timeout >= 36) break;
 				}
 				httpTool.close();
+				System.out.println(data);
 			} catch (IOException | InterruptedException e) {e.printStackTrace();}
 		}).start();
 	});
@@ -546,7 +536,7 @@ public class CommandRegistry {
 								new Field("Amount cleared:", args[1], false)));
 			} catch (IllegalArgumentException e) {
 				Functions.Messages.sendEmbeded(event.getChannel(),
-						Functions.Messages.errorEmbed(event.getMessage(), "Can only clear up to 100 messages, or messages are too old for automated deletion. Remember, your input is increased by one because of your command request."));
+						Functions.Messages.errorEmbed(event.getMessage(), "Can only clear up to 100 messages, or messages are too old for automated deletion. Remember, your inventory is increased by one because of your command request."));
 			}
 		}
 	}, Permission.MESSAGE_MANAGE);

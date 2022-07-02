@@ -3,7 +3,9 @@ package discordbot.core.render;
 import java.io.File;
 import java.io.IOException;
 
+import javax.annotation.Nullable;
 import javax.sound.sampled.AudioFileFormat.Type;
+import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.UnsupportedAudioFileException;
@@ -12,10 +14,7 @@ import org.apache.commons.io.FilenameUtils;
 
 import de.sciss.jump3r.Main;
 import discordbot.utils.Info;
-import discordbot.utils.media.AudioTypes;
-import discordbot.utils.media.ImageTypes;
-import discordbot.utils.media.MediaType;
-import discordbot.utils.media.VideoTypes;
+import discordbot.utils.media.*;
 import net.bramp.ffmpeg.builder.FFmpegBuilder;
 import net.bramp.ffmpeg.builder.FFmpegOutputBuilder;
 
@@ -34,7 +33,7 @@ public class Converter {
 				.setInput(Info.FFPROBE.probe(file.getPath()));
 	}
 	
-	public void convert(MediaType type) throws IOException, UnsupportedAudioFileException, IllegalMediaFormatException {
+	public void convert(MediaType type, @Nullable AudioFormat formatOverride, @Nullable File outputOverride) throws IOException, UnsupportedAudioFileException, IllegalMediaFormatException {
 		this.outputPath = OUTPUT_BUILDER + type.getExtension();
 		if (type instanceof VideoTypes && MediaType.findFormat(FilenameUtils.getExtension(this.file.getPath())) instanceof VideoTypes) {
 			
@@ -69,8 +68,14 @@ public class Converter {
 				
 			} else {
 				AudioInputStream ais = AudioSystem.getAudioInputStream(this.file);
-				ais.reset();
-				AudioSystem.write(ais, format, getOutputFile());
+				if (formatOverride != null) {
+					AudioInputStream ais$new = AudioSystem.getAudioInputStream(formatOverride, ais);
+					AudioSystem.write(ais$new, format, (outputOverride == null) ? getOutputFile() : outputOverride);
+					ais$new.close();
+				} else {
+					ais.reset();
+					AudioSystem.write(ais, format, (outputOverride == null) ? getOutputFile() : outputOverride);
+				}
 				ais.close();
 			}
 		} else if (type instanceof ImageTypes && MediaType.findFormat(FilenameUtils.getExtension(this.file.getPath())) instanceof ImageTypes) {
