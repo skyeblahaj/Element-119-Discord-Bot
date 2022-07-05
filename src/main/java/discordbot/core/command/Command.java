@@ -1,7 +1,7 @@
 package discordbot.core.command;
 
 import discordbot.core.event.BasicEventRegistry;
-import discordbot.inter_face.ManualControl;
+import discordbot.inter_face.debug.ManualControl;
 import discordbot.utils.Info;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 

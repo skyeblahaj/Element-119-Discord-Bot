@@ -102,7 +102,7 @@ public class Functions{
 		}
 		
 		public static void sendMessageReply(Message message, String s) {
-			message.reply(s);
+			message.reply(s).queue();;
 		}
 		
 		public static void sendFile(MessageChannel channel, File f) {
@@ -117,6 +117,18 @@ public class Functions{
 				sendEmbededReply(message,
 						errorEmbed(message, "File size is too large."));
 			}
+		}
+		
+		public static void editMessage(Message message, String s) {
+			message.editMessage(s).queue();
+		}
+		
+		public static void editMessage(Message message, Message newMessage) {
+			message.editMessage(newMessage).queue();
+		}
+		
+		public static void editEmbeded(MessageChannel channel, EmbedBuilder e) {
+			channel.editMessageEmbedsById(channel.getLatestMessageId(), e.build()).queue();
 		}
 		
 		public static void addReaction(Message msg, Emote e) {

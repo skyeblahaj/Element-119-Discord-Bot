@@ -20,12 +20,24 @@
 	</dependencyManagement>
 
 	<dependencies>
-	
+
+		<dependency>
+			<groupId>com.github.sapher</groupId>
+			<artifactId>youtubedl-java</artifactId>
+			<version>2cbe41f</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.jsoup</groupId>
+			<artifactId>jsoup</artifactId>
+			<version>1.15.1</version>
+		</dependency>
+
 		<dependency>
 			<groupId>org.asynchttpclient</groupId>
 			<artifactId>async-http-client</artifactId>
 		</dependency>
-		
+
 		<dependency>
 			<groupId>com.googlecode.soundlibs</groupId>
 			<artifactId>vorbisspi</artifactId>

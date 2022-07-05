@@ -20,9 +20,12 @@ import org.apache.commons.io.FileUtils;
 import org.apache.hc.core5.http.ParseException;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.message.BasicHeader;
+import org.jsoup.nodes.Element;
 
 import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.SearchResult;
+import com.sapher.youtubedl.YoutubeDLException;
+import com.sapher.youtubedl.YoutubeDLResponse;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrackInfo;
 
@@ -30,19 +33,22 @@ import discordbot.Element119;
 import discordbot.core.audio.GuildMusicManager;
 import discordbot.core.audio.PlayerManager;
 import discordbot.core.audio.spotify.LinkConverter;
+import discordbot.core.download.Downloader;
+import discordbot.core.network.DOMGetRequester;
 import discordbot.core.network.GetRequester;
 import discordbot.core.network.PostRequester;
 import discordbot.core.render.Converter;
 import discordbot.core.render.IllegalMediaFormatException;
 import discordbot.core.render.ImageLayerer;
 import discordbot.core.render.Scaler;
-import discordbot.inter_face.ManualControl;
+import discordbot.inter_face.debug.ManualControl;
 import discordbot.utils.BusPassenger;
 import discordbot.utils.Functions;
 import discordbot.utils.Info;
 import discordbot.utils.RegistryBus;
 import discordbot.utils.media.AudioTypes;
 import discordbot.utils.media.MediaType;
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message.Attachment;
@@ -342,17 +348,12 @@ public class CommandRegistry {
 	});
 	
 	public static final Command MC_SERVER = register("mc", event -> {
+		String[] args = Functions.Messages.multiArgs(event.getMessage());
 		try {
 			GetRequester httpTool = new GetRequester("https://api.mcsrvstat.us/2/mc.omobasil.xyz");
 			JsonObject obj = Functions.Network.getJSON(httpTool.get());
 			
 			httpTool.close();
-			
-			File motd = new File("src/main/resources/reusable/motd.html");
-			Functions.Utils.writeToFile(motd, "<!DOCTYPE html>\n<html>\n" + obj.getJsonObject("motd")
-												 							   .getJsonArray("html")
-												 							   .getString(0) +
-											  "\n</html>");
 			
 			if (obj.getJsonObject("debug").getBoolean("ping")) {
 				int playerCount = obj.getJsonObject("players").getInt("online");
@@ -371,7 +372,15 @@ public class CommandRegistry {
 														   obj.getJsonObject("players").getInt("max"), false),
 								(playerCount > 0) ? new Field("Players:", players, false) : null)
 						.setThumbnail("https://cdn.discordapp.com/attachments/592579994408976384/991204974170218537/server-icon.png"));
-				Functions.Messages.sendFile(event.getChannel(), motd);
+				File motd = new File("src/main/resources/reusable/motd.html");
+				
+				if (args.length > 1) if (args[1].equalsIgnoreCase("motd")) {
+					Functions.Utils.writeToFile(motd, "<!DOCTYPE html>\n<html>\n" + 
+							obj.getJsonObject("motd")							 							   
+							   .getJsonArray("html")
+							   .getString(0) + "\n</html>");
+					Functions.Messages.sendFile(event.getChannel(), motd);
+				}
 			} else {
 				Functions.Messages.sendEmbeded(event.getChannel(), 
 						Functions.Messages.buildEmbed("Minecraft Server", new Color(0xff0000),
@@ -501,6 +510,61 @@ public class CommandRegistry {
 				System.out.println(data);
 			} catch (IOException | InterruptedException e) {e.printStackTrace();}
 		}).start();
+	});
+	
+	public static final Command VOYAGER = register("voyager", event -> {
+		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		new Thread(() -> {
+			boolean metrics;
+			boolean $continue = false;
+			switch (args[1].toLowerCase()) {
+			case "metrics" -> {
+				metrics = true;
+				$continue = true;
+			}
+			case "imperial" -> {
+				metrics = false;
+				$continue = true;
+			}
+			default -> {
+				$continue = false;
+				metrics = false; //needed to assign this
+				Functions.Messages.sendEmbeded(event.getChannel(),
+						Functions.Messages.errorEmbed(event.getMessage(), "Please specify a measurement system.\nOptions: 'imperial' / 'metric'"));
+			}
+			}
+			if ($continue) {
+				try {
+					DOMGetRequester httpTool = new DOMGetRequester("https://voyager.jpl.nasa.gov/mission/status/");
+					Element data = httpTool.getHTMLElementsAsList("voy1_km").get(0);
+				} catch (IOException e) {e.printStackTrace();}
+			}
+		}).start();
+	});
+	
+	public static final Command DOWNLOAD = register("download", event -> {
+		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		if (args.length < 2) Functions.Messages.sendEmbeded(event.getChannel(), 
+				Functions.Messages.errorEmbed(event.getMessage(), "Must specify a URL."));
+		else {
+			args[1] = args[1].replace("shorts/", "watch?v=");
+			
+			Downloader downloadTool = new Downloader(args[1]);
+			
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.buildEmbed("Downloader", new Color(0xfff0f0),
+						new Field("Video Link:", args[1], false),
+						new Field("Progress:", 0 + "%", false)));
+			try {
+				YoutubeDLResponse resp = downloadTool.execute((prog, eta) -> {
+					EmbedBuilder embeded = Functions.Messages.buildEmbed("Downloader", new Color(0xfff0f0),
+							new Field("Video Link:", args[1], false),
+							new Field("Progress:", prog + "%", false));
+					Functions.Messages.editEmbeded(event.getChannel(), embeded);
+				});
+				Functions.Messages.sendMessage(event.getChannel(), resp.getOut());
+			} catch (YoutubeDLException e) {e.printStackTrace();}
+		}
 	});
 	
 //////////////////////////////////////////////////////////////////////////////////////////////////

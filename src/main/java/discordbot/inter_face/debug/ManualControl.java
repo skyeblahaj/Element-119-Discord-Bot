@@ -1,4 +1,4 @@
-package discordbot.inter_face;
+package discordbot.inter_face.debug;
 
 import java.awt.Dimension;
 import java.awt.GridLayout;
@@ -47,7 +47,7 @@ public class ManualControl {
 				this.setIconImage(ImageIO.read(new URL(Element119.mainJDA.getSelfUser().getAvatarUrl())));
 			} catch (IOException e) {e.printStackTrace();}
 			this.setResizable(false);
-			this.getContentPane().setLayout(new GridLayout(2, 2));
+			this.getContentPane().setLayout(new GridLayout(4, 2));
 			JTextField inventory = new JTextField(),
 					guildID = new JTextField();
 			this.getContentPane().add(new JPanel().add(inventory));
@@ -62,7 +62,7 @@ public class ManualControl {
 				JFrame menu = new JFrame("Settings Menu");
 				menu.setSize(resolution.width / 4, resolution.height / 4);
 				menu.setLocationRelativeTo(null);
-				menu.getContentPane().setLayout(new GridLayout(4,4));
+				menu.getContentPane().setLayout(new GridLayout(4,2));
 				
 				menu.getContentPane().add(new JPanel().add(new JLabel("Server Target ID:")));
 				JTextField server = new JTextField();
@@ -82,6 +82,16 @@ public class ManualControl {
 				menu.setVisible(true);
 			});
 			this.getContentPane().add(settings);
+			
+			
+			JTextField messageID = new JTextField();
+			
+			this.getContentPane().add(new JPanel().add(messageID));
+			JButton sendReply = new JButton("Reply to Message");
+			sendReply.addActionListener($1 -> {
+				Element119.mainJDA.getTextChannelById(guildID.getText()).retrieveMessageById(messageID.getText()).complete().reply(inventory.getText()).queue();
+			});
+			this.getContentPane().add(new JPanel().add(sendReply));
 		}
 	}
 }

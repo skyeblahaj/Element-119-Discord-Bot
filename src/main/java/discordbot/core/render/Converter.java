@@ -46,7 +46,7 @@ public class Converter {
 			}
 			FFmpegOutputBuilder config = this.builder.addOutput(this.outputPath);
 			config.setFormat(type.getExtension()).setTargetSize(4_000_000).disableSubtitle().setAudioChannels(2)
-					.setAudioCodec("opus").setAudioSampleRate(48_000).setAudioBitRate(32768).setVideoCodec(codec)
+					.setAudioCodec("aac").setAudioSampleRate(48_000).setAudioBitRate(32768).setVideoCodec(codec)
 					.setVideoFrameRate(40, 1);
 
 			FFmpegBuilder finished = config.done();
