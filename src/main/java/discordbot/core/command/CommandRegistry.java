@@ -601,14 +601,7 @@ public class CommandRegistry {
 			try {
 				File input = new File("src/main/resources/cache/clickbaitIn." + imageInput.get(0).getFileExtension());
 				FileUtils.copyURLToFile(new URL(imageInput.get(0).getProxyUrl()), input);
-				BufferedImage mainImage = null; 
-				try {
-					mainImage = ImageIO.read(input);
-				} catch (NullPointerException e) {
-					Functions.Messages.sendEmbeded(event.getChannel(), 
-							Functions.Messages.errorEmbed(event.getMessage(), "Internal Server Error."));
-				}
-				Scaler scaleTool = new Scaler(mainImage, 300, 150);
+				Scaler scaleTool = new Scaler(ImageIO.read(input), 300, 150);
 				ImageLayerer renderTool = new ImageLayerer(ImageIO.read(new File("src/main/resources/clickbait.png")), scaleTool.scale());
 				renderTool.render(0, 0, 0);
 				renderTool.render(1, 142, 242);
@@ -616,7 +609,11 @@ public class CommandRegistry {
 				renderTool.complete(output);
 				
 				Functions.Messages.sendFileReply(event.getMessage(), new File(output));
-			} catch (IOException e) {e.printStackTrace();}
+			} catch (Exception e) {
+				e.printStackTrace();
+				Functions.Messages.sendEmbeded(event.getChannel(), 
+						Functions.Messages.errorEmbed(event.getMessage(), "Internal Server Error. Try changing file formats."));
+			}
 		}
 	});
 	
