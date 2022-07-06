@@ -12,7 +12,7 @@ public class OwnerCommand extends Command {
 	
 	@Override
 	public void onMessageReceived(MessageReceivedEvent event) {
-		boolean msgBool = event.getMessage().getContentRaw().startsWith(Info.PREFIX + this.name);
+		boolean msgBool = Functions.Utils.startsWithIgnoreCase(event.getMessage().getContentRaw(), Info.PREFIX + this.name);
 		if (msgBool && event.getAuthor().getId().equals(Info.OWNER_ID)) {
 			this.action.action(event);
 		} else if (msgBool) {

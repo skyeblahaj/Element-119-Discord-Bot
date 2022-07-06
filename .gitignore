@@ -16,4 +16,5 @@ custom_interactions/
 *.mov
 *.aiff
 *.aifc
+*.webp
 motd.html

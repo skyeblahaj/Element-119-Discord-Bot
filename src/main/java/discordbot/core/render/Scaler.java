@@ -10,10 +10,12 @@ public class Scaler {
 	private Image img;
 	
 	public Scaler(BufferedImage img, BufferedImage ratio, float xMult, float yMult) {
-		float x = ratio.getWidth() * xMult;
-		float y = ratio.getHeight() * yMult;
-		this.img = img.getScaledInstance((int) x, (int) y, Image.SCALE_SMOOTH);
-		this.render = new BufferedImage((int) x, (int) y, BufferedImage.TYPE_INT_ARGB);
+		this(img, (int) (ratio.getWidth() * xMult), (int) (ratio.getHeight() * yMult));
+	}
+	
+	public Scaler(BufferedImage img, int x, int y) {
+		this.img = img.getScaledInstance(x, y, Image.SCALE_SMOOTH);
+		this.render = new BufferedImage(x, y, BufferedImage.TYPE_INT_ARGB);
 	}
 	
 	public BufferedImage scale() {

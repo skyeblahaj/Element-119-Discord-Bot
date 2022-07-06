@@ -41,12 +41,14 @@ import discordbot.core.render.Converter;
 import discordbot.core.render.IllegalMediaFormatException;
 import discordbot.core.render.ImageLayerer;
 import discordbot.core.render.Scaler;
+import discordbot.inter_face.custom.CustomGuildFeatures;
 import discordbot.inter_face.debug.ManualControl;
 import discordbot.utils.BusPassenger;
 import discordbot.utils.Functions;
 import discordbot.utils.Info;
 import discordbot.utils.RegistryBus;
 import discordbot.utils.media.AudioTypes;
+import discordbot.utils.media.ImageTypes;
 import discordbot.utils.media.MediaType;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.Permission;
@@ -195,8 +197,13 @@ public class CommandRegistry {
 					
 					Functions.Messages.sendFileReply(event.getMessage(), bit16);
 					
-					//TODO continue this code when lavaplayer is implemented
+					// play in vc
 					
+					if (event.getMember().getVoiceState().inAudioChannel()) {
+						AudioManager manager = event.getGuild().getAudioManager();
+						if (!manager.isConnected()) manager.openAudioConnection(event.getMember().getVoiceState().getChannel());
+						PlayerManager.getInstance().load_play(event, bit16.getPath());
+					}
 				}
 			} catch (Exception e) {}
 		}).start();
@@ -231,46 +238,45 @@ public class CommandRegistry {
 				Functions.Messages.errorEmbed(event.getMessage(), "Not enough arguments."));
 		else {
 			if (!manager.isConnected()) {
-				try {
-					manager.openAudioConnection(event.getMember().getVoiceState().getChannel());
-					if (args[1].contains("youtu.be") || args[1].contains("youtube.com")) {
+				manager.openAudioConnection(event.getMember().getVoiceState().getChannel()); 
+			}
+			try {
+				
+				if (args[1].contains("youtu.be") || args[1].contains("youtube.com")) {
 
 						PlayerManager.getInstance().load_play(event, args[1].replace("shorts/", "watch?v="));
 						
-					} else if (args[1].contains("spotify.com")) {
-						List<String> songs = null;
-						try {
-							songs = new LinkConverter().convert(args[1]);
-						} catch (ParseException | SpotifyWebApiException | IOException e) {
+				} else if (args[1].contains("spotify.com")) {
+					List<String> songs = null;
+					try {
+						songs = new LinkConverter().convert(args[1]);
+					} catch (ParseException | SpotifyWebApiException | IOException e) {
 							e.printStackTrace();
-						}
-						YouTube yt = Functions.OAuth.buildYoutube();
-						for (String song : songs) {
-							List<SearchResult> results = yt.search().list("id,snippet").setQ(song).setMaxResults(4L)
-									.setFields("items(id/kind,id/videoId,snippet/title,snippet/thumbnails/default/url)").execute().getItems();
-							if (!results.isEmpty()) {
-								String vidID = results.get(0).getId().getVideoId();
-								PlayerManager.getInstance().load_play(event, "https://www.youtube.com/watch?v=" + vidID);
-								Functions.Messages.sendEmbeded(event.getChannel(),
-										Functions.Messages.buildEmbed("Audio Player", new Color(0xf0f0f0),
-												new Field("Queued:", PlayerManager.getInstance()
+					}
+					YouTube yt = Functions.OAuth.buildYoutube();
+					for (String song : songs) {
+						List<SearchResult> results = yt.search().list("id,snippet").setQ(song).setMaxResults(4L)
+								.setFields("items(id/kind,id/videoId,snippet/title,snippet/thumbnails/default/url)").execute().getItems();
+						if (!results.isEmpty()) {
+							String vidID = results.get(0).getId().getVideoId();
+							PlayerManager.getInstance().load_play(event, "https://www.youtube.com/watch?v=" + vidID);
+							Functions.Messages.sendEmbeded(event.getChannel(),
+									Functions.Messages.buildEmbed("Audio Player", new Color(0xf0f0f0),
+											new Field("Queued:", PlayerManager.getInstance()
 																	 .getMusicManager(event.getGuild())
 																	 .getPlayer().getPlayingTrack()
 																	 .getInfo().title, false)));
-							} else Functions.Messages.sendEmbeded(event.getChannel(),
-									Functions.Messages.errorEmbed(event.getMessage(), "Could not retrieve song via the Spotify API."));
-						}
-					} else {
-						Functions.Messages.sendEmbeded(event.getChannel(),
-								Functions.Messages.errorEmbed(event.getMessage(), "URL or file cannot be retrieved."));
+						} else Functions.Messages.sendEmbeded(event.getChannel(),
+							Functions.Messages.errorEmbed(event.getMessage(), "Could not retrieve song via the Spotify API."));
+					}
+				} else {
+					Functions.Messages.sendEmbeded(event.getChannel(),
+							Functions.Messages.errorEmbed(event.getMessage(), "URL or file cannot be retrieved."));
 					}
 				} catch (IllegalArgumentException e) {
 					Functions.Messages.sendEmbeded(event.getChannel(),
-							Functions.Messages.errorEmbed(event.getMessage(), "User is not connected to a voice channel."));
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
+						Functions.Messages.errorEmbed(event.getMessage(), "User is not connected to a voice channel."));
+			} catch (IOException e) {}
 		}
 	});
 	
@@ -297,13 +303,14 @@ public class CommandRegistry {
 	});
 	
 	public static final Command NEXT = register("next", event -> {
-		if (event.getGuild().getAudioManager().isConnected()) {
+		if (event.getGuild().getAudioManager().isConnected() && event.getMember().getVoiceState().inAudioChannel()) {
 			final GuildMusicManager manager = PlayerManager.getInstance().getMusicManager(event.getGuild());
 			if (manager.getScheduler().getQueue() == null) {
 				Functions.Messages.sendEmbeded(event.getChannel(),
 						Functions.Messages.errorEmbed(event.getMessage(), "Queue is empty."));
 			} else manager.getScheduler().nextTrack();
-		}
+		} else Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Not in voice channel."));
 	});
 	
 	public static final Command VC = register("vc", event -> {
@@ -311,6 +318,21 @@ public class CommandRegistry {
 			AudioManager manager = event.getGuild().getAudioManager();
 			if (manager.isConnected()) manager.closeAudioConnection();
 			else manager.openAudioConnection(event.getMember().getVoiceState().getChannel());
+		} else Functions.Messages.sendEmbeded(event.getChannel(),
+					Functions.Messages.errorEmbed(event.getMessage(), "User is not in a voice channel."));
+	});
+	
+	public static final Command STOP = register("stop", event -> {
+		if (event.getMember().getVoiceState().inAudioChannel()) {
+			final GuildMusicManager manager = PlayerManager.getInstance().getMusicManager(event.getGuild());
+			AudioManager audio = event.getGuild().getAudioManager();
+			if (audio.isConnected()) {
+				manager.getScheduler().getPlayer().stopTrack();
+				manager.getScheduler().getQueue().clear();
+			} else {
+				Functions.Messages.sendEmbeded(event.getChannel(),
+						Functions.Messages.errorEmbed(event.getMessage(), "Bot is not connected to an audio channel."));
+			}
 		} else Functions.Messages.sendEmbeded(event.getChannel(),
 				Functions.Messages.errorEmbed(event.getMessage(), "User is not in a voice channel."));
 	});
@@ -404,7 +426,7 @@ public class CommandRegistry {
 				else {
 					Attachment toConvert = attachments.get(0);
 					if (toConvert.getSize() < 10485760) {
-						File inventory = new File("src/main/resources/cache/convert_inventory." + toConvert.getFileExtension());
+						File inventory = new File("src/main/resources/cache/convert_input." + toConvert.getFileExtension());
 						toConvert.downloadToFile(inventory);
 
 						try {
@@ -567,6 +589,37 @@ public class CommandRegistry {
 		}
 	});
 	
+	public static final Command CLICKBAIT = register("clickbait", event -> {
+		List<Attachment> imageInput = event.getMessage().getAttachments();
+		if (imageInput.size() <= 0) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Must include an image attachment."));
+		} else if (!(MediaType.findFormat(imageInput.get(0).getFileExtension()) instanceof ImageTypes)) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Attachment must be an image."));
+		} else {
+			try {
+				File input = new File("src/main/resources/cache/clickbaitIn." + imageInput.get(0).getFileExtension());
+				FileUtils.copyURLToFile(new URL(imageInput.get(0).getProxyUrl()), input);
+				BufferedImage mainImage = null; 
+				try {
+					mainImage = ImageIO.read(input);
+				} catch (NullPointerException e) {
+					Functions.Messages.sendEmbeded(event.getChannel(), 
+							Functions.Messages.errorEmbed(event.getMessage(), "Internal Server Error."));
+				}
+				Scaler scaleTool = new Scaler(mainImage, 300, 150);
+				ImageLayerer renderTool = new ImageLayerer(ImageIO.read(new File("src/main/resources/clickbait.png")), scaleTool.scale());
+				renderTool.render(0, 0, 0);
+				renderTool.render(1, 142, 242);
+				String output = "src/main/resources/cache/clickbait_output.png";
+				renderTool.complete(output);
+				
+				Functions.Messages.sendFileReply(event.getMessage(), new File(output));
+			} catch (IOException e) {e.printStackTrace();}
+		}
+	});
+	
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 	public static final OwnerCommand BOT_SHUTDOWN = registerOwner("botshutdown", event -> {
@@ -608,6 +661,24 @@ public class CommandRegistry {
 			}
 		}
 	}, Permission.MESSAGE_MANAGE);
+	
+	public static final PermissionCommand CUSTOM = registerPermission("custom", event -> {
+		if (event.getMessage().getAttachments().size() <= 0) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Must include a .json file."));
+		}
+		else if (!event.getMessage().getAttachments().get(0).getFileExtension().equalsIgnoreCase("json")) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "File must be a .json file."));
+		}
+		else {
+			String loc = "src/main/resources/custom_interactions/" + event.getGuild().getId() + ".json";
+			event.getMessage().getAttachments().get(0).downloadToFile(loc);
+			try {
+				CustomGuildFeatures thisGuild = new CustomGuildFeatures(event.getGuild(), new File(loc));
+			} catch (IOException e) {e.printStackTrace();}
+		}
+	}, Permission.ADMINISTRATOR);
 	
 //////////////////////////////////////////////////////////////////////////////////////////////////
 	

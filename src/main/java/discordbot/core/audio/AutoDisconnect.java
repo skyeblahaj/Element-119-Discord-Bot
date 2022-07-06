@@ -16,6 +16,9 @@ public class AutoDisconnect extends BasicEventRegistry {
 				.getMembers()
 				.size() <= 1) {
 			
+			final GuildMusicManager manager = PlayerManager.getInstance().getMusicManager(event.getGuild());
+			manager.getScheduler().getPlayer().stopTrack();
+			manager.getScheduler().getQueue().clear();
 			event.getGuild().getAudioManager().closeAudioConnection();
 			
 		}
