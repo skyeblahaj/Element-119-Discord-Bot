@@ -15,6 +15,11 @@ public class PermissionCommand extends Command {
 		this.perms = perms;
 	}
 	
+	public PermissionCommand(String name, CommandAction action, String help, Permission... perms) {
+		super(name, action, help);
+		this.perms = perms;
+	}
+	
 	@Override
 	public void onMessageReceived(MessageReceivedEvent event) {
 		boolean msgBool = Functions.Utils.startsWithIgnoreCase(event.getMessage().getContentRaw(), Info.PREFIX + this.name);

@@ -10,6 +10,10 @@ public class OwnerCommand extends Command {
 		super(name, action);
 	}
 	
+	public OwnerCommand(String name, CommandAction action, String help) {
+		super(name, action, help);
+	}
+	
 	@Override
 	public void onMessageReceived(MessageReceivedEvent event) {
 		boolean msgBool = Functions.Utils.startsWithIgnoreCase(event.getMessage().getContentRaw(), Info.PREFIX + this.name);

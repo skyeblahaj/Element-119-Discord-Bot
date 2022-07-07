@@ -9,11 +9,17 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 public class Command extends BasicEventRegistry {
 	
 	protected String name;
+	protected String help;
 	protected CommandAction action;
 	
-	public Command(String name, CommandAction action) {
+	public Command(String name, CommandAction action, String help) {
 		this.name = name;
 		this.action = action;
+		this.help = help;
+	}
+	
+	public Command(String name, CommandAction action) {
+		this(name, action, null);
 	}
 	
 	@Override
@@ -25,4 +31,7 @@ public class Command extends BasicEventRegistry {
 		return this.name;
 	}
 	
+	public String getHelp() {
+		return this.help;
+	}
 }

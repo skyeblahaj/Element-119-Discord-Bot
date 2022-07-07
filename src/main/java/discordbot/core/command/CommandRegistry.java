@@ -11,7 +11,6 @@ import java.util.List;
 
 import javax.imageio.ImageIO;
 import javax.json.JsonArray;
-import javax.json.JsonException;
 import javax.json.JsonObject;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.UnsupportedAudioFileException;
@@ -20,12 +19,9 @@ import org.apache.commons.io.FileUtils;
 import org.apache.hc.core5.http.ParseException;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.message.BasicHeader;
-import org.jsoup.nodes.Element;
 
 import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.SearchResult;
-import com.sapher.youtubedl.YoutubeDLException;
-import com.sapher.youtubedl.YoutubeDLResponse;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrackInfo;
 
@@ -33,24 +29,21 @@ import discordbot.Element119;
 import discordbot.core.audio.GuildMusicManager;
 import discordbot.core.audio.PlayerManager;
 import discordbot.core.audio.spotify.LinkConverter;
-import discordbot.core.download.Downloader;
-import discordbot.core.network.DOMGetRequester;
 import discordbot.core.network.GetRequester;
 import discordbot.core.network.PostRequester;
 import discordbot.core.render.Converter;
 import discordbot.core.render.IllegalMediaFormatException;
 import discordbot.core.render.ImageLayerer;
 import discordbot.core.render.Scaler;
-import discordbot.inter_face.custom.CustomGuildFeatures;
 import discordbot.inter_face.debug.ManualControl;
 import discordbot.utils.BusPassenger;
 import discordbot.utils.Functions;
 import discordbot.utils.Info;
 import discordbot.utils.RegistryBus;
+import discordbot.utils.function.SameThreadRunnable;
 import discordbot.utils.media.AudioTypes;
 import discordbot.utils.media.ImageTypes;
 import discordbot.utils.media.MediaType;
-import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message.Attachment;
@@ -70,25 +63,76 @@ public class CommandRegistry {
 	public static final List<OwnerCommand> OWNER_COMMANDS = new ArrayList<>();
 	public static final List<PermissionCommand> PERMISSION_COMMANDS = new ArrayList<>();
 	
-	private static Command register(String name, CommandAction action) {
-		Command cmd = new Command(name, action);
+	private static Command register(String name, CommandAction action, String help) {
+		Command cmd = new Command(name, action, help);
 		COMMANDS.add(cmd);
 		return cmd;
 	}
 	
-	private static OwnerCommand registerOwner(String name, CommandAction action) {
-		OwnerCommand cmd = new OwnerCommand(name, action);
+	private static OwnerCommand registerOwner(String name, CommandAction action, String help) {
+		OwnerCommand cmd = new OwnerCommand(name, action, help);
 		OWNER_COMMANDS.add(cmd);
 		return cmd;
 	}
 	
-	private static PermissionCommand registerPermission(String name, CommandAction action, Permission... perms) {
-		PermissionCommand cmd = new PermissionCommand(name, action, perms);
+	private static PermissionCommand registerPermission(String name, CommandAction action, String help, Permission... perms) {
+		PermissionCommand cmd = new PermissionCommand(name, action, help, perms);
 		PERMISSION_COMMANDS.add(cmd);
 		return cmd;
 	}
 	
+	private static Command register(String name, CommandAction action) {
+		return register(name, action, null);
+	}
+	
+	private static OwnerCommand registerOwner(String name, CommandAction action) {
+		return registerOwner(name, action, null);
+	}
+	
+	private static PermissionCommand registerPermission(String name, CommandAction action, Permission... perms) {
+		return registerPermission(name, action, null, perms);
+	}
+	
 //////////////////////////////////////////////////////////////////////////////////////////////////
+	
+	public static final Command CMD_HELP = register("cmdhelp", event -> {
+		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		if (args.length < 2) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Include the string of another command."));
+		} else {
+			Command cmd = null;
+			for (List<? extends Command> l : ALL_COMMANDS) {
+				for (Command c : l) {
+					if (args[1].equalsIgnoreCase(c.getName())) {
+						cmd = c;
+					}
+				}
+			}
+			if (cmd instanceof OwnerCommand) {
+				Functions.Messages.sendEmbeded(event.getChannel(), 
+						Functions.Messages.buildEmbed("Command Help", new Color(0x00ff00),
+								new Field("Notice:", "Developer Only", false),
+								new Field((String) Functions.Utils.capitalize(cmd.getName()), cmd.getHelp() == null ? "No help message is provided." : cmd.getHelp(), false)));
+			} else if (cmd instanceof PermissionCommand) {
+				String perms = "";
+				for (Permission p : ((PermissionCommand) cmd).getPerms()) {
+					perms += p.getName() + "\n";
+				}
+				Functions.Messages.sendEmbeded(event.getChannel(), 
+						Functions.Messages.buildEmbed("Command Help", new Color(0x00ff00),
+								new Field("Notice:", "Needs:\n" + perms, false),
+								new Field((String) Functions.Utils.capitalize(cmd.getName()), cmd.getHelp() == null ? "No help message is provided." : cmd.getHelp(), false)));
+			} else if (cmd == null) {
+				Functions.Messages.sendEmbeded(event.getChannel(), 
+						Functions.Messages.errorEmbed(event.getMessage(), "Cannot find requested command."));
+			} else {
+				Functions.Messages.sendEmbeded(event.getChannel(), 
+						Functions.Messages.buildEmbed("Command Help", new Color(0x00ff00),
+								new Field((String) Functions.Utils.capitalize(cmd.getName()), cmd.getHelp() == null ? "No help message is provided." : cmd.getHelp(), false)));
+			}
+		}
+	}, "You're already on the help page. Stupid.");
 	
 	public static final Command INFORMATION = register("info", event -> {
 		Functions.Messages.sendEmbeded(event.getChannel(),
@@ -97,7 +141,7 @@ public class CommandRegistry {
 						new Field("Owner:", Info.OWNER_TAG, false),
 						new Field("Language:", "Java", false),
 						new Field("GitHub:", "https://github.com/skyeblahaj/Element-119-Discord-Bot", false)).setThumbnail(Element119.mainJDA.getSelfUser().getAvatarUrl()));
-	});
+	}, "Returns generic information about the bot.");
 	
 	public static final Command HELP = register("help", event -> {
 		MessageChannel c = event.getChannel();
@@ -107,7 +151,7 @@ public class CommandRegistry {
 		case 2 : Functions.Messages.sendMessage(c, "مرحبا غروه الكرة لوغان"); break;
 		case 3 : Functions.Messages.sendMessage(c, "burger credit card"); break;
 		}
-	});
+	}, "Not what you'd expect from a help command. Why don't you try it out?");
 	
 	public static final Command COMMAND_LIST = register("commands", event -> {
 		String list = "";
@@ -127,7 +171,7 @@ public class CommandRegistry {
 			}
 		}
 		Functions.Messages.sendMessage(event.getChannel(), "```--Command List--" + list + "```");
-	});
+	}, "Returns all registered commands. Note that this command is automated as development progress continues so some commands may not function correctly.");
 	
 	public static final Command AVATAR = register("avatar", event -> {
 		String[] args = Functions.Messages.multiArgs(event.getMessage());
@@ -157,7 +201,7 @@ public class CommandRegistry {
 			} catch (IndexOutOfBoundsException e) {Functions.Messages.sendEmbeded(event.getChannel(), Functions.Messages.errorEmbed(event.getMessage(), "Could not grab avatar."));}
 			
 		} else Functions.Messages.sendEmbeded(event.getChannel(), Functions.Messages.errorEmbed(event.getMessage(), "Could not grab avatar."));
-	});
+	}, "Grabs the avatar of the user either searched my nickname, pinged, or if nothing specified, the user theirself.");
 	
 	public static final Command TTS = register("tts", event -> {
 		String[] args = Functions.Messages.multiArgs(event.getMessage());
@@ -207,7 +251,7 @@ public class CommandRegistry {
 				}
 			} catch (Exception e) {}
 		}).start();
-	});
+	}, "Accesses an external AI generation website and returns the text entered by the user spoken by the character specified.");
 	
 	public static final Command QUOTE = register("quote", event -> {
 		try {
@@ -229,7 +273,7 @@ public class CommandRegistry {
 			Functions.Messages.sendFile(event.getChannel(), new File(attachmentOutCached));
 			
 		} catch (IOException e) {e.printStackTrace();}
-	});
+	}, "Renders a speech bubble the exact hex color of Discord's dark mode on top of the image provided by the user.");
 	
 	public static final Command PLAY = register("play", event -> {
 		String[] args = Functions.Messages.multiArgs(event.getMessage());
@@ -278,7 +322,7 @@ public class CommandRegistry {
 						Functions.Messages.errorEmbed(event.getMessage(), "User is not connected to a voice channel."));
 			} catch (IOException e) {}
 		}
-	});
+	}, "Plays audio from different sources. Must be in a voice channel to use.");
 	
 	public static final Command TRACK = register("track", event -> {
 		if (event.getGuild().getAudioManager().isConnected()) {
@@ -300,7 +344,7 @@ public class CommandRegistry {
 			}		
 		} else Functions.Messages.sendEmbeded(event.getChannel(),
 					Functions.Messages.errorEmbed(event.getMessage(), "Bot is not connected to an audio channel."));
-	});
+	}, "Returns the current playing song's information. This includes the title, author, source, and the elapsed time since it started.");
 	
 	public static final Command NEXT = register("next", event -> {
 		if (event.getGuild().getAudioManager().isConnected() && event.getMember().getVoiceState().inAudioChannel()) {
@@ -311,7 +355,7 @@ public class CommandRegistry {
 			} else manager.getScheduler().nextTrack();
 		} else Functions.Messages.sendEmbeded(event.getChannel(), 
 					Functions.Messages.errorEmbed(event.getMessage(), "Not in voice channel."));
-	});
+	}, "Skips to the next song within the queue.");
 	
 	public static final Command VC = register("vc", event -> {
 		if (event.getMember().getVoiceState().inAudioChannel()) {
@@ -320,7 +364,7 @@ public class CommandRegistry {
 			else manager.openAudioConnection(event.getMember().getVoiceState().getChannel());
 		} else Functions.Messages.sendEmbeded(event.getChannel(),
 					Functions.Messages.errorEmbed(event.getMessage(), "User is not in a voice channel."));
-	});
+	}, "Toggles connection to the voice channel the user is connected to.");
 	
 	public static final Command STOP = register("stop", event -> {
 		if (event.getMember().getVoiceState().inAudioChannel()) {
@@ -335,7 +379,7 @@ public class CommandRegistry {
 			}
 		} else Functions.Messages.sendEmbeded(event.getChannel(),
 				Functions.Messages.errorEmbed(event.getMessage(), "User is not in a voice channel."));
-	});
+	}, "Stops the current track and clears the queue.");
 	
 	public static final Command CAPTION = register("caption", event -> {
 		String[] args = Functions.Messages.multiArgs(event.getMessage());
@@ -409,7 +453,7 @@ public class CommandRegistry {
 								new Field("Error:", "Server Offline", false)));
 			}
 		} catch (Exception e) {e.printStackTrace();}
-	});
+	}, "Returns the current information of the Minecraft server hosted by the bot owner. Write 'motd' as a parameter to access the MOTD message.");
 	
 	public static final Command CONVERT = register("convert", event -> {
 		String[] args = Functions.Messages.multiArgs(event.getMessage());
@@ -447,7 +491,7 @@ public class CommandRegistry {
 				}
 			}).start();
 		}
-	});
+	}, "Converts video, audio, or images to different formats.");
 	
 	public static final Command SHOW_PERMISSIONS = register("showperms", event -> {
 		String[] args = Functions.Messages.multiArgs(event.getMessage());
@@ -487,7 +531,7 @@ public class CommandRegistry {
 			} catch (IndexOutOfBoundsException e) {Functions.Messages.sendEmbeded(event.getChannel(), Functions.Messages.errorEmbed(event.getMessage(), "Could not grab permissions."));}
 			
 		} else Functions.Messages.sendEmbeded(event.getChannel(), Functions.Messages.errorEmbed(event.getMessage(), "Could not grab permissions."));
-	});
+	}, "Returns all permissions the user has, or user specified as a parameter.");
 	
 	public static final Command RANDOM = register("random", event -> {
 		String output = "";
@@ -497,100 +541,37 @@ public class CommandRegistry {
 			output += (Functions.RANDOM.nextBoolean()) ? data[Functions.RANDOM.nextInt(data.length)] : Character.toUpperCase(data[Functions.RANDOM.nextInt(data.length)]);
 		}
 		Functions.Messages.sendMessage(event.getChannel(), output);
-	});
-	
-	public static final Command CRAIYON = register("craiyon", event -> {
-		String[] args = Functions.Messages.multiArgs(event.getMessage());
-		Functions.Messages.sendEmbeded(event.getChannel(), 
-				Functions.Messages.buildEmbed("Craiyon API", new Color(0xff5500),
-						new Field("Generating...", "This may take a few minutes.", false)));
-		new Thread(() -> {
-			//Message cachedMessage = event.getMessage();
-			PostRequester httpTool = new PostRequester("http://backend.craiyon.com/generate");
-			String userInput = "";
-			for (int i = 1; i < args.length; i++) {
-				userInput += " " + args[i];
-			}
-			try {
-				CloseableHttpResponse response = httpTool.post("{\"prompt\":\"" + userInput.trim() + "\"}", 
-						new BasicHeader("accept", "application/json"),
-						new BasicHeader("content-type", "application/json"));
-				JsonObject data = null;
-				int timeout = 0;
-				while (true) {
-					try {
-						data = Functions.Network.getJSON(response);
-						break;
-					} catch (JsonException e) {
-						System.out.println("not ready");
-						timeout++;
-						Thread.sleep(5000);
-					}
-					if (timeout >= 36) break;
-				}
-				httpTool.close();
-				System.out.println(data);
-			} catch (IOException | InterruptedException e) {e.printStackTrace();}
-		}).start();
-	});
-	
-	public static final Command VOYAGER = register("voyager", event -> {
-		String[] args = Functions.Messages.multiArgs(event.getMessage());
-		new Thread(() -> {
-			boolean metrics;
-			boolean $continue = false;
-			switch (args[1].toLowerCase()) {
-			case "metrics" -> {
-				metrics = true;
-				$continue = true;
-			}
-			case "imperial" -> {
-				metrics = false;
-				$continue = true;
-			}
-			default -> {
-				$continue = false;
-				metrics = false; //needed to assign this
-				Functions.Messages.sendEmbeded(event.getChannel(),
-						Functions.Messages.errorEmbed(event.getMessage(), "Please specify a measurement system.\nOptions: 'imperial' / 'metric'"));
-			}
-			}
-			if ($continue) {
-				try {
-					DOMGetRequester httpTool = new DOMGetRequester("https://voyager.jpl.nasa.gov/mission/status/");
-					Element data = httpTool.getHTMLElementsAsList("voy1_km").get(0);
-				} catch (IOException e) {e.printStackTrace();}
-			}
-		}).start();
-	});
-	
-	public static final Command DOWNLOAD = register("download", event -> {
-		String[] args = Functions.Messages.multiArgs(event.getMessage());
-		if (args.length < 2) Functions.Messages.sendEmbeded(event.getChannel(), 
-				Functions.Messages.errorEmbed(event.getMessage(), "Must specify a URL."));
-		else {
-			args[1] = args[1].replace("shorts/", "watch?v=");
-			
-			Downloader downloadTool = new Downloader(args[1]);
-			
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.buildEmbed("Downloader", new Color(0xfff0f0),
-						new Field("Video Link:", args[1], false),
-						new Field("Progress:", 0 + "%", false)));
-			try {
-				YoutubeDLResponse resp = downloadTool.execute((prog, eta) -> {
-					EmbedBuilder embeded = Functions.Messages.buildEmbed("Downloader", new Color(0xfff0f0),
-							new Field("Video Link:", args[1], false),
-							new Field("Progress:", prog + "%", false));
-					Functions.Messages.editEmbeded(event.getChannel(), embeded);
-				});
-				Functions.Messages.sendMessage(event.getChannel(), resp.getOut());
-			} catch (YoutubeDLException e) {e.printStackTrace();}
-		}
-	});
+	}, "Generates a random alpha-numeric character sequence from a length of 1-150.");
 	
 	public static final Command CLICKBAIT = register("clickbait", event -> {
+		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		
+		int index = 0;
+		boolean random = true;
+		
+		if (args.length > 1) {
+			switch (Integer.parseInt(args[1])) {
+				case 0 -> {
+					random = false;
+					break;
+				}
+				case 1 -> {
+					index = 1;
+					random = false;
+					break;
+				}
+			}
+		}
 		List<Attachment> imageInput = event.getMessage().getAttachments();
+		String output = "src/main/resources/cache/clickbait_output.png";
+		
+		final BufferedImage inImage;
+		BufferedImage inTemp = null;
+		final BufferedImage clickbait0;
+		BufferedImage cl0Temp = null;
+		final BufferedImage clickbait1;
+		BufferedImage cl1Temp = null;
+		
 		if (imageInput.size() <= 0) {
 			Functions.Messages.sendEmbeded(event.getChannel(), 
 					Functions.Messages.errorEmbed(event.getMessage(), "Must include an image attachment."));
@@ -598,24 +579,53 @@ public class CommandRegistry {
 			Functions.Messages.sendEmbeded(event.getChannel(), 
 					Functions.Messages.errorEmbed(event.getMessage(), "Attachment must be an image."));
 		} else {
+			
+			File input = new File("src/main/resources/cache/clickbaitIn." + imageInput.get(0).getFileExtension());
+			
 			try {
-				File input = new File("src/main/resources/cache/clickbaitIn." + imageInput.get(0).getFileExtension());
 				FileUtils.copyURLToFile(new URL(imageInput.get(0).getProxyUrl()), input);
-				Scaler scaleTool = new Scaler(ImageIO.read(input), 300, 150);
-				ImageLayerer renderTool = new ImageLayerer(ImageIO.read(new File("src/main/resources/clickbait.png")), scaleTool.scale());
+			} catch (IOException e) {e.printStackTrace();}
+			
+			if (random) index = Functions.RANDOM.nextInt(2);
+			
+			try {
+				inTemp = ImageIO.read(input);
+				
+				cl0Temp = ImageIO.read(new File("src/main/resources/clickbait.png"));
+				cl1Temp = ImageIO.read(new File("src/main/resources/banana.jpg"));
+				
+			} catch (IOException e) {e.printStackTrace();}
+			
+			inImage = inTemp;
+			clickbait0 = cl0Temp;
+			clickbait1 = cl1Temp;
+			
+			SameThreadRunnable cr1tikal = (() -> {
+				Scaler scaleTool = new Scaler(inImage, 300, 150);
+				ImageLayerer renderTool = new ImageLayerer(clickbait0, scaleTool.scale());
 				renderTool.render(0, 0, 0);
 				renderTool.render(1, 142, 242);
-				String output = "src/main/resources/cache/clickbait_output.png";
-				renderTool.complete(output);
 				
-				Functions.Messages.sendFileReply(event.getMessage(), new File(output));
-			} catch (Exception e) {
-				e.printStackTrace();
-				Functions.Messages.sendEmbeded(event.getChannel(), 
-						Functions.Messages.errorEmbed(event.getMessage(), "Internal Server Error. Try changing file formats."));
+				renderTool.complete(output);
+			});
+			
+			SameThreadRunnable banana = (() -> {
+				Scaler scaleTool = new Scaler(inImage, 335, 486);
+				ImageLayerer renderTool = new ImageLayerer(clickbait1, scaleTool.scale());
+				renderTool.render(0, 0, 0);
+				renderTool.render(1, 131, 209);
+				
+				renderTool.complete(output);
+			});
+			
+			switch (index) {
+			case 0 -> {cr1tikal.run(); break;}
+			case 1 -> {banana.run(); break;}
 			}
+			
+			Functions.Messages.sendFileReply(event.getMessage(), new File(output));
 		}
-	});
+	}, "Renders the image proveded by the user over a predetermined image of an internet clickbait thumbnail. Specify an integer as a parameter to select a specific thumbnail.");
 	
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -625,7 +635,7 @@ public class CommandRegistry {
 			Thread.sleep(1500);
 		} catch (InterruptedException e) {e.printStackTrace();}
 		System.exit(0);
-	});
+	}, "Shuts down the current instance of the bot.");
 	
 	public static final OwnerCommand SYSTEM_SHUTDOWN = registerOwner("systemshutdown", event -> {
 		Functions.Messages.sendMessage(event.getChannel(), "System is shutting down...");
@@ -633,12 +643,12 @@ public class CommandRegistry {
 			Thread.sleep(1500);
 			Runtime.getRuntime().exec("shutdown -s -t 0"); //win10 only
 		} catch (IOException | InterruptedException e) {e.printStackTrace();}
-	});
+	}, "Shuts down the computer the bot is hosted on.");
 	
 	public static final OwnerCommand MANUAL_CONTROL = registerOwner("takeover", event -> {
 		ManualControl.commandToggle = false;
 		new ManualControl(true, event);
-	});
+	}, "Switches to manual mode, providing a control panel.");
 	
 //////////////////////////////////////////////////////////////////////////////////////////////////
 	
@@ -657,9 +667,9 @@ public class CommandRegistry {
 						Functions.Messages.errorEmbed(event.getMessage(), "Can only clear up to 100 messages, or messages are too old for automated deletion. Remember, your inventory is increased by one because of your command request."));
 			}
 		}
-	}, Permission.MESSAGE_MANAGE);
+	}, "Purges the amount of previous messages specified as a parameter.", Permission.MESSAGE_MANAGE);
 	
-	public static final PermissionCommand CUSTOM = registerPermission("custom", event -> {
+	/*public static final PermissionCommand CUSTOM = registerPermission("custom", event -> {
 		if (event.getMessage().getAttachments().size() <= 0) {
 			Functions.Messages.sendEmbeded(event.getChannel(), 
 					Functions.Messages.errorEmbed(event.getMessage(), "Must include a .json file."));
@@ -675,7 +685,7 @@ public class CommandRegistry {
 				CustomGuildFeatures thisGuild = new CustomGuildFeatures(event.getGuild(), new File(loc));
 			} catch (IOException e) {e.printStackTrace();}
 		}
-	}, Permission.ADMINISTRATOR);
+	}, Permission.ADMINISTRATOR);*/
 	
 //////////////////////////////////////////////////////////////////////////////////////////////////
 	
