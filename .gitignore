@@ -1,6 +1,6 @@
 .settings/*
 target/
-custom_interactions/
+custom_interface/
 *.prefs
 *.prv
 *.class

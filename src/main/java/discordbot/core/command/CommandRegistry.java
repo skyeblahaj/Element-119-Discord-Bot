@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 import javax.imageio.ImageIO;
 import javax.json.JsonArray;
@@ -35,6 +36,8 @@ import discordbot.core.render.Converter;
 import discordbot.core.render.IllegalMediaFormatException;
 import discordbot.core.render.ImageLayerer;
 import discordbot.core.render.Scaler;
+import discordbot.inter_face.custom.CustomGuildFeatures;
+import discordbot.inter_face.custom.GuildController;
 import discordbot.inter_face.debug.ManualControl;
 import discordbot.utils.BusPassenger;
 import discordbot.utils.Functions;
@@ -57,11 +60,11 @@ public class CommandRegistry {
 	
 	private CommandRegistry() {}
 	
-	public static final List<List<? extends Command>> ALL_COMMANDS = new ArrayList<>();
-	
 	public static final List<Command> COMMANDS = new ArrayList<>();
 	public static final List<OwnerCommand> OWNER_COMMANDS = new ArrayList<>();
 	public static final List<PermissionCommand> PERMISSION_COMMANDS = new ArrayList<>();
+	
+	public static final List<List<? extends Command>> ALL_COMMANDS = List.of(COMMANDS, OWNER_COMMANDS, PERMISSION_COMMANDS);
 	
 	private static Command register(String name, CommandAction action, String help) {
 		Command cmd = new Command(name, action, help);
@@ -436,7 +439,8 @@ public class CommandRegistry {
 								new Field("Port:", obj.getInt("port") + "", true),
 								new Field("Player Count:", playerCount + " / " +
 														   obj.getJsonObject("players").getInt("max"), false),
-								(playerCount > 0) ? new Field("Players:", players, false) : null)
+								(playerCount > 0) ? new Field("Players:", players, false) : null, 
+								new Field("How to Join:", "https://www.omobasil.xyz/servers/modmc/", false))
 						.setThumbnail("https://cdn.discordapp.com/attachments/592579994408976384/991204974170218537/server-icon.png"));
 				File motd = new File("src/main/resources/reusable/motd.html");
 				
@@ -560,6 +564,14 @@ public class CommandRegistry {
 					random = false;
 					break;
 				}
+				case 2 -> {
+					index = 2;
+					random = false;
+				}
+				case 3 -> {
+					index = 3;
+					random = false;
+				}
 			}
 		}
 		List<Attachment> imageInput = event.getMessage().getAttachments();
@@ -571,6 +583,10 @@ public class CommandRegistry {
 		BufferedImage cl0Temp = null;
 		final BufferedImage clickbait1;
 		BufferedImage cl1Temp = null;
+		final BufferedImage clickbait2;
+		BufferedImage cl2Temp = null;
+		final BufferedImage clickbait3;
+		BufferedImage cl3Temp = null;
 		
 		if (imageInput.size() <= 0) {
 			Functions.Messages.sendEmbeded(event.getChannel(), 
@@ -586,41 +602,65 @@ public class CommandRegistry {
 				FileUtils.copyURLToFile(new URL(imageInput.get(0).getProxyUrl()), input);
 			} catch (IOException e) {e.printStackTrace();}
 			
-			if (random) index = Functions.RANDOM.nextInt(2);
+			if (random) index = Functions.RANDOM.nextInt(4);
 			
 			try {
 				inTemp = ImageIO.read(input);
 				
 				cl0Temp = ImageIO.read(new File("src/main/resources/clickbait.png"));
 				cl1Temp = ImageIO.read(new File("src/main/resources/banana.jpg"));
+				cl2Temp = ImageIO.read(new File("src/main/resources/scammer.png"));
+				cl3Temp = ImageIO.read(new File("src/main/resources/osaka.png"));
 				
 			} catch (IOException e) {e.printStackTrace();}
 			
 			inImage = inTemp;
 			clickbait0 = cl0Temp;
 			clickbait1 = cl1Temp;
+			clickbait2 = cl2Temp;
+			clickbait3 = cl3Temp;
 			
-			SameThreadRunnable cr1tikal = (() -> {
+			SameThreadRunnable cr1tikal = () -> {
 				Scaler scaleTool = new Scaler(inImage, 300, 150);
 				ImageLayerer renderTool = new ImageLayerer(clickbait0, scaleTool.scale());
 				renderTool.render(0, 0, 0);
 				renderTool.render(1, 142, 242);
 				
 				renderTool.complete(output);
-			});
+			};
 			
-			SameThreadRunnable banana = (() -> {
+			SameThreadRunnable banana = () -> {
 				Scaler scaleTool = new Scaler(inImage, 335, 486);
 				ImageLayerer renderTool = new ImageLayerer(clickbait1, scaleTool.scale());
 				renderTool.render(0, 0, 0);
 				renderTool.render(1, 131, 209);
 				
 				renderTool.complete(output);
-			});
+			};
+			
+			SameThreadRunnable scammer = () -> {
+				Scaler scaleTool = new Scaler(inImage, 345, 420);
+				ImageLayerer renderTool = new ImageLayerer(clickbait2, scaleTool.scale());
+				renderTool.render(0, 0, 0);
+				renderTool.render(1, 27, 265);
+				
+				renderTool.complete(output);
+			};
+			
+			SameThreadRunnable osaka = () -> {
+				Scaler scaleTool = new Scaler(inImage, 208, 256);
+				ImageLayerer renderTool = new ImageLayerer(clickbait3, scaleTool.scale());
+				renderTool.render(0, 0, 0);
+				renderTool.render(1, 943, 576);
+				
+				renderTool.complete(output);
+			};
 			
 			switch (index) {
 			case 0 -> {cr1tikal.run(); break;}
 			case 1 -> {banana.run(); break;}
+			case 2 -> {scammer.run(); break;}
+			case 3 -> {osaka.run(); break;}
 			}
 			
 			Functions.Messages.sendFileReply(event.getMessage(), new File(output));
@@ -669,23 +709,46 @@ public class CommandRegistry {
 		}
 	}, "Purges the amount of previous messages specified as a parameter.", Permission.MESSAGE_MANAGE);
 	
-	/*public static final PermissionCommand CUSTOM = registerPermission("custom", event -> {
-		if (event.getMessage().getAttachments().size() <= 0) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Must include a .json file."));
-		}
-		else if (!event.getMessage().getAttachments().get(0).getFileExtension().equalsIgnoreCase("json")) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "File must be a .json file."));
-		}
+	public static final PermissionCommand CUSTOM = registerPermission("custom", event -> {
+		List<Attachment> atts = event.getMessage().getAttachments();
+		File loc = new File("src/main/resources/custom_interface/" + event.getGuild().getId() + ".json");
+		if (loc.exists()) Functions.Messages.sendEmbeded(event.getChannel(), 
+				Functions.Messages.errorEmbed(event.getMessage(), "Custom server features already exist."));
 		else {
-			String loc = "src/main/resources/custom_interactions/" + event.getGuild().getId() + ".json";
-			event.getMessage().getAttachments().get(0).downloadToFile(loc);
-			try {
-				CustomGuildFeatures thisGuild = new CustomGuildFeatures(event.getGuild(), new File(loc));
-			} catch (IOException e) {e.printStackTrace();}
+			if (atts.size() <= 0) {
+				Functions.Messages.sendEmbeded(event.getChannel(), 
+						Functions.Messages.errorEmbed(event.getMessage(), "Must include a .json file."));
+			}
+			else if (!atts.get(0).getFileExtension().equalsIgnoreCase("json")) {
+				Functions.Messages.sendEmbeded(event.getChannel(), 
+						Functions.Messages.errorEmbed(event.getMessage(), "File must be a .json file."));
+			}
+			else {
+				try {
+					atts.get(0).downloadToFile(loc).get();
+					new CustomGuildFeatures(event.getGuild());
+					Functions.Messages.sendEmbeded(event.getChannel(), 
+							Functions.Messages.buildEmbed("Custom Server Features", new Color(0x00ff00), 
+									new Field("Success", "Added custom features.", false)));
+				} catch (InterruptedException | ExecutionException | IOException e) {e.printStackTrace();}
+			}
 		}
-	}, Permission.ADMINISTRATOR);*/
+	}, "Adds custom server features to this server such as commands and events. Provide a .json file for the bot to read and parse.", Permission.ADMINISTRATOR);
+	
+	public static final PermissionCommand CUSTOM_REMOVE = registerPermission("rmvcustom", event -> {
+		File loc = new File("src/main/resources/custom_interface/" + event.getGuild().getId() + ".json");
+		if (loc.exists()) {
+			try {
+				GuildController.removeCustomServer(event.getGuild());
+				FileUtils.forceDelete(loc);
+				Functions.Messages.sendEmbeded(event.getChannel(), Functions.Messages.buildEmbed("Custom Server Features", new Color(0x00ff00),
+						new Field("Success", "Deleted custom server features.", false)));
+			} catch (IOException e) {e.printStackTrace();}
+		} else {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Custom server features do not currently exist."));
+		}
+	}, "Removes any custom server features.", Permission.ADMINISTRATOR);
 	
 //////////////////////////////////////////////////////////////////////////////////////////////////
 	
@@ -703,8 +766,5 @@ public class CommandRegistry {
 			cmd.register();
 			System.out.println(cmd.getName() + " permission command is registered.");
 		}
-		ALL_COMMANDS.add(COMMANDS);
-		ALL_COMMANDS.add(OWNER_COMMANDS);
-		ALL_COMMANDS.add(PERMISSION_COMMANDS);
 	}
 }

@@ -14,14 +14,16 @@ import net.dv8tion.jda.api.entities.Member;
 public class ExtraRegistry {
 	private ExtraRegistry() {}
 	
-	public static final Map<Guild/*server*/, Member/*self member*/> BOT_MEMBER = new HashMap<>();
+	public static final Map<Guild, Member> BOT_MEMBER = new HashMap<>();
 	
 	@RegistryBus
 	public static void registry() {
+		
+		System.out.println("---START OF EXTRA REGISTRIES---");
+		
 		new Logging().register();
 		new AutoDisconnect().register();
-		//for (Guild g : Element119.mainJDA.getGuilds()) {
-		//	BOT_MEMBER.put(g, g.getSelfMember());
-		//}
+		
+		System.out.println("---END OF EXTRA REGISTRIES---");
 	}
 }

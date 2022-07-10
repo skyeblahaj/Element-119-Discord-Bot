@@ -12,6 +12,7 @@ import org.reflections.scanners.Scanners;
 import org.reflections.util.ClasspathHelper;
 import org.reflections.util.ConfigurationBuilder;
 
+import discordbot.inter_face.debug.Startup;
 import discordbot.utils.BusPassenger;
 import discordbot.utils.Functions;
 import discordbot.utils.Info;
@@ -27,6 +28,8 @@ public class Element119 {
 	public static void main(String args[]) throws LoginException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
 		mainJDA = JDABuilder.createDefault(Functions.Utils.readToken(new File("src/main/resources/private/jda_token.prv"))).build();
 		System.out.println("Bot is configuring...");
+		
+		new Startup().register(); //urgent to register first
 		
 		mainJDA.getPresence().setActivity(Activity.playing("Prefix: '" + Info.PREFIX + "'"));
 		
