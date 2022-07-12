@@ -21,6 +21,7 @@ import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.services.youtube.YouTube;
 
+import discordbot.Element119;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Emote;
 import net.dv8tion.jda.api.entities.Message;
@@ -28,6 +29,7 @@ import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed.Field;
 import net.dv8tion.jda.api.requests.restaction.MessageAction;
 
+@BusPassenger
 public class Functions{
 
 	//utils for memory management
@@ -72,21 +74,29 @@ public class Functions{
 		}
 	}
 	
+	@BusPassenger
 	public static class OAuth {
 		private OAuth() {}
 		
-		public static YouTube buildYoutube() {
-			final YouTube yt;
+		private static YouTube ytInstance;
+		
+		@RegistryBus
+		public static void buildYoutube() {
 			YouTube app = null;
 			try {
 				app = new YouTube.Builder(GoogleNetHttpTransport.newTrustedTransport(),
 											JacksonFactory.getDefaultInstance(),
 											(req -> req.setInterceptor(
 													inter -> inter.getUrl().set("key",
-														Functions.Utils.readToken(new File("src/main/resources/private/google_token.prv")))))).build();
+														Functions.Utils.readToken(new File("src/main/resources/private/google_token.prv"))))))
+						.setApplicationName(Element119.class.getSimpleName() + "-Discord-Bot-Google-API")
+						.build();
 			} catch(Exception e) {e.printStackTrace();}
-			yt = app;
-			return yt;
+			ytInstance = app;
+		}
+		
+		public static YouTube youtubeInstance() {
+			return ytInstance;
 		}
 	}
 	

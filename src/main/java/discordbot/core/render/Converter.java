@@ -13,6 +13,7 @@ import javax.sound.sampled.UnsupportedAudioFileException;
 import org.apache.commons.io.FilenameUtils;
 
 import de.sciss.jump3r.Main;
+import discordbot.utils.Functions;
 import discordbot.utils.Info;
 import discordbot.utils.media.*;
 import net.bramp.ffmpeg.builder.FFmpegBuilder;
@@ -34,25 +35,38 @@ public class Converter {
 	}
 	
 	public void convert(MediaType type, @Nullable AudioFormat formatOverride, @Nullable File outputOverride) throws IOException, UnsupportedAudioFileException, IllegalMediaFormatException {
-		this.outputPath = OUTPUT_BUILDER + type.getExtension();
-		if (type instanceof VideoTypes && MediaType.findFormat(FilenameUtils.getExtension(this.file.getPath())) instanceof VideoTypes) {
+		this.outputPath = outputOverride == null ? OUTPUT_BUILDER + type.getExtension() : outputOverride.getPath();
+		if (type instanceof VideoTypes && MediaType.findFormat(FilenameUtils.getExtension(this.file.getPath())) instanceof VideoTypes) { //video -> video
 			
-			String codec = "";
+			String codec;
+			String audioCodec;
 			switch ((VideoTypes)type) {
-			case MP4 -> codec = "libx264";
-			case WEBM -> codec = "libvpx";
-			case GIF -> codec = "gif";
-			default -> codec = "libx264";
+			case MP4 -> {
+				codec = "libx264";
+				audioCodec = "mp3";
+			}
+			case WEBM -> {
+				codec = "libvpx";
+				audioCodec = "opus";
+			}
+			case GIF -> {
+				codec = "gif";
+				audioCodec = "aac"; //cant set null, stops code
+			}
+			default -> {
+				codec = "libx264";
+				audioCodec = "mp3";
+			}
 			}
 			FFmpegOutputBuilder config = this.builder.addOutput(this.outputPath);
 			config.setFormat(type.getExtension()).setTargetSize(4_000_000).disableSubtitle().setAudioChannels(2)
-					.setAudioCodec("aac").setAudioSampleRate(48_000).setAudioBitRate(32768).setVideoCodec(codec)
+					.setAudioCodec(audioCodec).setAudioSampleRate(48_000).setAudioBitRate(128_000).setVideoCodec(codec)
 					.setVideoFrameRate(40, 1);
 
 			FFmpegBuilder finished = config.done();
 			Info.FFMPEG_EXECUTOR.createTwoPassJob(finished).run();
 			
-		} else if (type instanceof AudioTypes && MediaType.findFormat(FilenameUtils.getExtension(this.file.getPath())) instanceof AudioTypes) {
+		} else if (type instanceof AudioTypes && MediaType.findFormat(FilenameUtils.getExtension(this.file.getPath())) instanceof AudioTypes) { //audio -> audio
 			Type format = null;
 			boolean mp3 = false;
 			switch ((AudioTypes)type) {
@@ -78,9 +92,17 @@ public class Converter {
 				}
 				ais.close();
 			}
-		} else if (type instanceof ImageTypes && MediaType.findFormat(FilenameUtils.getExtension(this.file.getPath())) instanceof ImageTypes) {
+		} else if (type instanceof ImageTypes && MediaType.findFormat(FilenameUtils.getExtension(this.file.getPath())) instanceof ImageTypes) { //image -> image
 			
 			
+		} else if (type instanceof AudioTypes && MediaType.findFormat(FilenameUtils.getExtension(this.file.getPath())) instanceof VideoTypes) { //video -> audio
+			String dir = Functions.Utils.readToken(new File("src/main/resources/private/ffmpeg.prv")).replace('/', '\\');
+			String[] cmdArgs = {dir.substring(0, dir.length() - 10) + "ffmpeg.exe", "-y", "-i", this.file.getAbsolutePath(), 
+					(Functions.Utils.readToken(new File("src/main/resources/private/dir.prv")) + this.outputPath).replace('/', '\\')};
+			for (String s : cmdArgs) System.out.println(s);
+			try {
+				new ProcessBuilder(cmdArgs).start().waitFor();
+			} catch (Exception e) {e.printStackTrace();}
 			
 		} else throw new IllegalMediaFormatException("Cannot find a media type related to file extension.");
 	}

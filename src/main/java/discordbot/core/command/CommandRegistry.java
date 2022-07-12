@@ -17,6 +17,7 @@ import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.UnsupportedAudioFileException;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.hc.core5.http.ParseException;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.message.BasicHeader;
@@ -47,6 +48,7 @@ import discordbot.utils.function.SameThreadRunnable;
 import discordbot.utils.media.AudioTypes;
 import discordbot.utils.media.ImageTypes;
 import discordbot.utils.media.MediaType;
+import discordbot.utils.media.VideoTypes;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message.Attachment;
@@ -280,8 +282,38 @@ public class CommandRegistry {
 	
 	public static final Command PLAY = register("play", event -> {
 		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		
 		AudioManager manager = event.getGuild().getAudioManager();
-		if (args.length < 2) Functions.Messages.sendEmbeded(event.getChannel(),
+		
+		if (event.getMessage().getAttachments().size() > 0) {
+			
+			String loc = "src/main/resources/cache/audioplayertemp." + event.getMessage().getAttachments().get(0).getFileExtension();
+			File dir = new File(loc);
+			try {
+				event.getMessage().getAttachments().get(0).downloadToFile(dir).get();
+			} catch (InterruptedException | ExecutionException e) {e.printStackTrace();}
+			
+			if (MediaType.findFormat(FilenameUtils.getExtension(loc)) instanceof VideoTypes) {
+				Functions.Messages.sendEmbeded(event.getChannel(), 
+						Functions.Messages.buildEmbed("Audio Player", new Color(0x00ff00), 
+								new Field("Downloading File...", "This may take a few seconds, and longer if the file is in video format.", false),
+								new Field("Warning:", "This will overwrite the previous file queued, if any file was queued.", false)));
+				try {
+					loc = "src/main/resources/cache/audioplayertemp.mp3";
+					Converter convertTool = new Converter(dir);
+					convertTool.convert(AudioTypes.MP3, null, new File(loc));
+				} catch (IOException | IllegalMediaFormatException | UnsupportedAudioFileException e) {e.printStackTrace();}
+				
+				if (!manager.isConnected()) {
+					manager.openAudioConnection(event.getMember().getVoiceState().getChannel()); 
+				}
+				PlayerManager.getInstance().load_play(event, loc);
+			} else {
+				Functions.Messages.sendEmbeded(event.getChannel(),
+						Functions.Messages.errorEmbed(event.getMessage(), "File format is not supported. Try audio or video."));
+			}
+			
+		} else if (args.length < 2) Functions.Messages.sendEmbeded(event.getChannel(),
 				Functions.Messages.errorEmbed(event.getMessage(), "Not enough arguments."));
 		else {
 			if (!manager.isConnected()) {
@@ -300,19 +332,13 @@ public class CommandRegistry {
 					} catch (ParseException | SpotifyWebApiException | IOException e) {
 							e.printStackTrace();
 					}
-					YouTube yt = Functions.OAuth.buildYoutube();
+					YouTube yt = Functions.OAuth.youtubeInstance();
 					for (String song : songs) {
 						List<SearchResult> results = yt.search().list("id,snippet").setQ(song).setMaxResults(4L)
 								.setFields("items(id/kind,id/videoId,snippet/title,snippet/thumbnails/default/url)").execute().getItems();
 						if (!results.isEmpty()) {
 							String vidID = results.get(0).getId().getVideoId();
 							PlayerManager.getInstance().load_play(event, "https://www.youtube.com/watch?v=" + vidID);
-							Functions.Messages.sendEmbeded(event.getChannel(),
-									Functions.Messages.buildEmbed("Audio Player", new Color(0xf0f0f0),
-											new Field("Queued:", PlayerManager.getInstance()
-																	 .getMusicManager(event.getGuild())
-																	 .getPlayer().getPlayingTrack()
-																	 .getInfo().title, false)));
 						} else Functions.Messages.sendEmbeded(event.getChannel(),
 							Functions.Messages.errorEmbed(event.getMessage(), "Could not retrieve song via the Spotify API."));
 					}
@@ -325,7 +351,7 @@ public class CommandRegistry {
 						Functions.Messages.errorEmbed(event.getMessage(), "User is not connected to a voice channel."));
 			} catch (IOException e) {}
 		}
-	}, "Plays audio from different sources. Must be in a voice channel to use.");
+	}, "Plays audio from different sources. Youtube links, Spotify links, and files. Must be in a voice channel to use.");
 	
 	public static final Command TRACK = register("track", event -> {
 		if (event.getGuild().getAudioManager().isConnected()) {
@@ -487,7 +513,7 @@ public class CommandRegistry {
 						} catch (UnsupportedAudioFileException e) {
 							Functions.Messages.sendEmbeded(event.getChannel(), Functions.Messages.errorEmbed(
 									event.getMessage(), "Format provided is not supported."));
-						} catch (IOException e) {}
+						} catch (IOException e) {e.printStackTrace();}
 					} else {
 						Functions.Messages.sendEmbeded(event.getChannel(), 
 								Functions.Messages.errorEmbed(event.getMessage(), "Please keep inventory files below 10 MB."));
@@ -689,6 +715,13 @@ public class CommandRegistry {
 		ManualControl.commandToggle = false;
 		new ManualControl(true, event);
 	}, "Switches to manual mode, providing a control panel.");
+	
+	public static final OwnerCommand RUNTIME = registerOwner("runtime", event -> {
+		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		try {
+			Runtime.getRuntime().exec(args[1]);
+		} catch (IOException e) {e.printStackTrace();}
+	}, "Direct system runtime access.");
 	
 //////////////////////////////////////////////////////////////////////////////////////////////////
 	
