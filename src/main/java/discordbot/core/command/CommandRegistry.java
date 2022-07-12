@@ -45,12 +45,10 @@ import discordbot.utils.Functions;
 import discordbot.utils.Info;
 import discordbot.utils.RegistryBus;
 import discordbot.utils.function.SameThreadRunnable;
-import discordbot.utils.media.AudioTypes;
-import discordbot.utils.media.ImageTypes;
-import discordbot.utils.media.MediaType;
-import discordbot.utils.media.VideoTypes;
+import discordbot.utils.media.*;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.Message.Attachment;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed.Field;
@@ -693,6 +691,21 @@ public class CommandRegistry {
 		}
 	}, "Renders the image proveded by the user over a predetermined image of an internet clickbait thumbnail. Specify an integer as a parameter to select a specific thumbnail.");
 	
+	public static final Command PRINT = register("print", event -> {
+		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		
+		if (args.length < 2) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Include a string."));
+		} else {
+			String print = "";
+			for (int i = 1; i < args.length; i++) {
+				print += " " + args[i];
+			}
+			Functions.Messages.sendMessage(event.getChannel(), print.trim());
+		}
+	});
+	
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
 	public static final OwnerCommand BOT_SHUTDOWN = registerOwner("botshutdown", event -> {
@@ -719,7 +732,11 @@ public class CommandRegistry {
 	public static final OwnerCommand RUNTIME = registerOwner("runtime", event -> {
 		String[] args = Functions.Messages.multiArgs(event.getMessage());
 		try {
-			Runtime.getRuntime().exec(args[1]);
+			String[] input = new String[args.length - 1];
+			for (int i = 0; i < args.length - 1; i++) {
+				input[i] = args[i + 1];
+			}
+			Runtime.getRuntime().exec(input);
 		} catch (IOException e) {e.printStackTrace();}
 	}, "Direct system runtime access.");
 	
@@ -731,13 +748,14 @@ public class CommandRegistry {
 				Functions.Messages.errorEmbed(event.getMessage(), "Must include an integer."));
 		else {
 			try {
-				event.getChannel().purgeMessages(event.getChannel().getHistory().retrievePast(Integer.parseInt(args[1] + 1)).complete());
+				List<Message> toPurge = event.getChannel().getHistory().retrievePast(Integer.parseInt(args[1]) + 1).complete();
+				event.getChannel().purgeMessages(toPurge);
 				Functions.Messages.sendEmbeded(event.getChannel(),
 						Functions.Messages.buildEmbed("Message Purge Success", new Color(0x00ff00),
 								new Field("Amount cleared:", args[1], false)));
 			} catch (IllegalArgumentException e) {
 				Functions.Messages.sendEmbeded(event.getChannel(),
-						Functions.Messages.errorEmbed(event.getMessage(), "Can only clear up to 100 messages, or messages are too old for automated deletion. Remember, your inventory is increased by one because of your command request."));
+						Functions.Messages.errorEmbed(event.getMessage(), "Can only clear up to 100 messages, or messages are too old for automated deletion. Remember, your input is increased by one because of your command request."));
 			}
 		}
 	}, "Purges the amount of previous messages specified as a parameter.", Permission.MESSAGE_MANAGE);
