@@ -22,6 +22,7 @@ import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 public class ManualControl {
 
 	public volatile static boolean commandToggle = true;
+	public volatile static boolean overrideToggle = false;
 	
 	public ManualControl(boolean v, MessageReceivedEvent event) {
 		new GraphicsInterface(event).setVisible(v);

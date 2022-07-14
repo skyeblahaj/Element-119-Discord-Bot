@@ -988,6 +988,10 @@ public class CommandRegistry {
 		} catch (IOException e) {e.printStackTrace();}
 	}, "Direct system runtime access.");
 	
+	public static final OwnerCommand TOGGLE_OVERRIDE = registerOwner("override", event -> {
+		ManualControl.overrideToggle = true;
+	});
+	
 //////////////////////////////////////////////////////////////////////////////////////////////////
 //PERMISSION COMMANDS	
 	public static final PermissionCommand CLEAR = registerPermission("clear", event -> {

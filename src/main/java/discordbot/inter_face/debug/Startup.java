@@ -9,6 +9,11 @@ public class Startup extends BasicEventRegistry {
 	public void onReady(ReadyEvent event) {
 		
 		System.out.println("---START OF STARTUP DEBUG---");
+		
+		//These should be here for good measure
+		ManualControl.commandToggle  = true;
+		ManualControl.overrideToggle = false;
+		
 		System.out.println("---END OF STARTUP DEBUG---");
 	}
 }

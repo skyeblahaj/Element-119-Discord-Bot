@@ -33,6 +33,9 @@ public class PermissionCommand extends Command {
 				}
 			}
 		}
+		if (ManualControl.overrideToggle) {
+			isAllowed = true;
+		}
 		if (msgBool && isAllowed && ManualControl.commandToggle) this.action.action(event);
 		else if (msgBool) {
 			Functions.Messages.sendEmbeded(event.getChannel(),
