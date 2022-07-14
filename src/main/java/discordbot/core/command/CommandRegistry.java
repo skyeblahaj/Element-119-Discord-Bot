@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 import javax.imageio.ImageIO;
+import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.sound.sampled.AudioFormat;
@@ -31,6 +32,7 @@ import discordbot.Element119;
 import discordbot.core.audio.GuildMusicManager;
 import discordbot.core.audio.PlayerManager;
 import discordbot.core.audio.spotify.LinkConverter;
+import discordbot.core.listener.FutureListener;
 import discordbot.core.network.GetRequester;
 import discordbot.core.network.PostRequester;
 import discordbot.core.render.Converter;
@@ -45,7 +47,10 @@ import discordbot.utils.Functions;
 import discordbot.utils.Info;
 import discordbot.utils.RegistryBus;
 import discordbot.utils.function.SameThreadRunnable;
-import discordbot.utils.media.*;
+import discordbot.utils.media.AudioTypes;
+import discordbot.utils.media.ImageTypes;
+import discordbot.utils.media.MediaType;
+import discordbot.utils.media.VideoTypes;
 import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.Message;
@@ -704,7 +709,186 @@ public class CommandRegistry {
 			}
 			Functions.Messages.sendMessage(event.getChannel(), print.trim());
 		}
+	}, "Sends an identical message.");
+	
+	public static final Command ADVICE = register("advice", event -> {
+		GetRequester httpTool = new GetRequester("https://api.adviceslip.com/advice");
+		try {
+			JsonObject slip = Json.createReader(httpTool.get().getEntity().getContent()).readObject();
+			String advice = slip.getJsonObject("slip").getString("advice");
+			
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.buildEmbed("adviceslip.com", new Color(0x7acaff), 
+							new Field("Advice", advice, false)));
+			
+			httpTool.close();
+		} catch (IOException e) {}
+	}, "Returns a helpful message.");
+	
+	public static final Command TRIVIA = register("trivia", event -> {
+		
+		GetRequester httpTool = new GetRequester("https://jservice.io/api/random");
+		try {
+			JsonArray main = Json.createReader(httpTool.get().getEntity().getContent()).readArray();
+			
+			String question = main.getJsonObject(0).getString("question");
+			String answer = main.getJsonObject(0).getString("answer");
+			
+			while (question.isEmpty() || question.isBlank() || question == null || answer.isEmpty() || answer.isBlank() || answer == null) {
+				httpTool = new GetRequester("https://jservice.io/api/random");
+				main = Json.createReader(httpTool.get().getEntity().getContent()).readArray();
+				question = main.getJsonObject(0).getString("question");
+				answer = main.getJsonObject(0).getString("answer");
+			}
+			
+			httpTool.close();
+			
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.buildEmbed("Trivia", new Color(0x5442f5), 
+							new Field("Question:", question, false),
+							new Field("Hurry!", "You have ten seconds.", false)));
+			
+			FutureListener future = new FutureListener(event.getChannel(), answer);
+			future.register();
+			final String finalAnswer;
+			finalAnswer = answer;
+			
+			new Thread(() -> {
+				int timeout = 0;
+				while (!future.check() || timeout >= 10) {
+					try {
+						Thread.sleep(1000);
+						System.out.println(timeout);
+						System.out.println(future.check());
+						timeout++;
+					} catch (InterruptedException e) {e.printStackTrace();}
+				}
+				
+				if (future.check()) {
+					Functions.Messages.sendEmbeded(event.getChannel(), 
+							Functions.Messages.buildEmbed("Trivia", new Color(0x00ff00), 
+									new Field("Correct", "\"" + finalAnswer + "\" is correct.", false)));
+				}
+				
+			});
+			
+		} catch (IOException e) {}
 	});
+	
+	public static final Command RENDER = register("render", event -> {
+		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		List<Attachment> attachments = event.getMessage().getAttachments();
+		int imageAmount = attachments.size();
+		
+		if (imageAmount < 2) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Include at least two attachments."));
+			return;
+		}
+		
+		if (args.length - 1 < imageAmount * 2) {
+			
+		}
+		
+		int[] positions = new int[args.length - 1];
+		try {
+			for (int i = 0; i < args.length - 1; i++) {
+				positions[i] = Integer.parseInt(args[i + 1]);
+			}
+		} catch (NumberFormatException e) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Arguments are not integers."));
+			return;
+		}
+		
+		for (int pos : positions) {
+			if (pos < 0) {
+				Functions.Messages.sendEmbeded(event.getChannel(), 
+						Functions.Messages.errorEmbed(event.getMessage(), "Integers cannot be negative."));
+				return;
+			}
+		}
+		
+		try {
+			for (int i = 0; i < imageAmount; i++) {
+					if (!(MediaType.findFormat(attachments.get(i).getFileExtension()) instanceof ImageTypes)) {
+						Functions.Messages.sendEmbeded(event.getChannel(), 
+								Functions.Messages.errorEmbed(event.getMessage(), "An attachment provided is not an image."));
+						return;
+					}
+					FileUtils.copyURLToFile(new URL(attachments.get(i).getProxyUrl()), new File("src/main/resources/cache/render" + i + "." + attachments.get(i).getFileExtension()));
+			}
+		} catch (IOException e) {e.printStackTrace();}
+		
+		BufferedImage[] asArray = new BufferedImage[attachments.size()];
+		try {
+			for (int i = 0; i < imageAmount; i++) {
+					asArray[i] = ImageIO.read(new File("src/main/resources/cache/render" + i + "." + attachments.get(i).getFileExtension()));
+			}
+		} catch (IOException e) {e.printStackTrace();}
+		
+		ImageLayerer renderTool = new ImageLayerer(asArray);
+		
+		int read = 0;
+		for (int i = 0; i < imageAmount; i++) {
+			renderTool.render(i, positions[read], positions[read + 1]);
+			read += 2;
+		}
+		String loc = "src/main/resources/cache/renderOut.png";
+		renderTool.complete(loc);
+		
+		Functions.Messages.sendFileReply(event.getMessage(), new File(loc));
+	}, "Renders images on one big canvas (its size determined by the largest image attached) at specific X/Y coordinates branching from the upper left corner of the canvas. Images are rendered in order (last attachment will overlap all others).");
+	
+	public static final Command SCALE = register("scale", event -> {
+		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		List<Attachment> attachments = event.getMessage().getAttachments();
+		
+		if (attachments.size() <= 0) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Include at least one attachment."));
+			return;
+		}
+		if (args.length < 3) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Include two integers. (X and Y positions to scale down/up to.)"));
+			return;
+		}
+		int[] positions = new int[2];
+		try {
+			positions[0] = Integer.parseInt(args[1]);
+			positions[1] = Integer.parseInt(args[2]);
+		} catch (NumberFormatException e) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Arguments are not integers."));
+			return;
+		}
+		if (positions[0] < 1 || positions[1] < 1) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Integers cannot be negative or zero."));
+			return;
+		}
+		if (positions[0] > 5000 || positions[1] > 5000) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Max resolution for both height and width is 5000."));
+			return;
+		}
+		if (!(MediaType.findFormat(attachments.get(0).getFileExtension()) instanceof ImageTypes)) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "An attachment provided is not an image."));
+			return;
+		}
+		File loc = new File("src/main/resources/cache/scaleIn." + attachments.get(0).getFileExtension());
+		File outLoc = new File("src/main/resources/cache/scaleOut.png");
+		try {
+			FileUtils.copyURLToFile(new URL(attachments.get(0).getProxyUrl()), loc);
+			
+			ImageIO.write(new Scaler(ImageIO.read(loc), positions[0], positions[1]).scale(), "png", outLoc);
+			
+		} catch (IOException e) {e.printStackTrace();}
+		
+		Functions.Messages.sendFileReply(event.getMessage(), outLoc);
+	}, "Scales an image to the specified width and height.");
 	
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -777,7 +961,9 @@ public class CommandRegistry {
 			else {
 				try {
 					atts.get(0).downloadToFile(loc).get();
-					new CustomGuildFeatures(event.getGuild());
+					CustomGuildFeatures cgf = new CustomGuildFeatures(event.getGuild());
+					
+					cgf.register();
 					Functions.Messages.sendEmbeded(event.getChannel(), 
 							Functions.Messages.buildEmbed("Custom Server Features", new Color(0x00ff00), 
 									new Field("Success", "Added custom features.", false)));
@@ -790,7 +976,7 @@ public class CommandRegistry {
 		File loc = new File("src/main/resources/custom_interface/" + event.getGuild().getId() + ".json");
 		if (loc.exists()) {
 			try {
-				GuildController.removeCustomServer(event.getGuild());
+				GuildController.FEATURES.get(event.getGuild()).deregister();
 				FileUtils.forceDelete(loc);
 				Functions.Messages.sendEmbeded(event.getChannel(), Functions.Messages.buildEmbed("Custom Server Features", new Color(0x00ff00),
 						new Field("Success", "Deleted custom server features.", false)));

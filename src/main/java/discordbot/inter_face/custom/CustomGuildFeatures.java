@@ -1,25 +1,39 @@
 package discordbot.inter_face.custom;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.json.Json;
 import javax.json.JsonObject;
+import javax.json.JsonReader;
 
 import discordbot.Element119;
 import discordbot.core.command.Command;
 import discordbot.utils.Functions;
+import discordbot.utils.Registrable;
 import net.dv8tion.jda.api.entities.Guild;
 
-public class CustomGuildFeatures {
+public class CustomGuildFeatures implements Registrable {
+	
+	private List<Command> customCommands;
+	private Guild guild;
 	
 	public CustomGuildFeatures(Guild guild) throws IOException {
 		
-		GuildController.addCustomServer(guild.getId());
+		this.guild = guild;
 		
-		JsonObject main = Json.createReader(new FileInputStream(GuildController.REGISTERED_SERVERS.get(guild))).readObject();
+		GuildController.REGISTERED_SERVERS.put(guild, new File("src/main/resources/custom_interface/" + guild.getId() + ".json"));
+		
+		JsonReader mainReader = Json.createReader(new FileInputStream(GuildController.REGISTERED_SERVERS.get(guild)));
+		
+		JsonObject main = mainReader.readObject();
 		JsonObject commands = main.getJsonObject("commands");
-		//JsonObject events = main.getJsonObject("events");
+		//JsonObject events = main.getJsonObject("events"); //coming soon
+		
+		List<Command> customCommands = new ArrayList<>();;
 		
 		commands.forEach((name, val) -> {
 			JsonObject selector = commands.getJsonObject(name);
@@ -31,15 +45,37 @@ public class CustomGuildFeatures {
 								Functions.Messages.sendMessage(event.getChannel(), value.toString().substring(1, value.toString().length() - 1));
 							}
 						});
-						cmd.register();
+						customCommands.add(cmd);
 						break;
 					}
 				}
-			});	
+			});
 		});
+		mainReader.close();
+		
+		this.customCommands = customCommands;
 	}
 	
 	public CustomGuildFeatures(String id) throws IOException {
 		this(Element119.mainJDA.getGuildById(id));
+	}
+	
+	@Override
+	public void register() {
+		for (Command cmd : this.customCommands) {
+			cmd.register();
+		}
+		GuildController.CUSTOM_GUILD_COMMANDS.put(this.guild, this.customCommands);
+		GuildController.FEATURES.put(this.guild, this);
+	}
+	
+	@Override
+	public void deregister() {
+		for (Command cmd : this.customCommands) {
+			cmd.deregister();
+		}
+		GuildController.CUSTOM_GUILD_COMMANDS.remove(this.guild);
+		GuildController.REGISTERED_SERVERS.remove(this.guild);
+		GuildController.FEATURES.remove(this.guild);
 	}
 }

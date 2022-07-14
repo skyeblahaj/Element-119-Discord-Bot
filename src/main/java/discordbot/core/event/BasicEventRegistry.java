@@ -11,4 +11,9 @@ public abstract class BasicEventRegistry extends ListenerAdapter implements Regi
 		Element119.mainJDA.addEventListener(this);
 	}
 	
+	@Override
+	public final void deregister() {
+		Element119.mainJDA.removeEventListener(this);
+	}
+	
 }
