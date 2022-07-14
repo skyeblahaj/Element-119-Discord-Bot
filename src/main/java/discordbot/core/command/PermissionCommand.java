@@ -22,6 +22,7 @@ public class PermissionCommand extends Command {
 	
 	@Override
 	public void onMessageReceived(MessageReceivedEvent event) {
+		if (event.getAuthor().isBot()) return;
 		boolean msgBool = Functions.Utils.startsWithIgnoreCase(event.getMessage().getContentRaw(), Info.PREFIX + this.name);
 		boolean isAllowed = true;
 		if (msgBool) {

@@ -1,9 +1,11 @@
 package discordbot.core.render;
 
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 
 import javax.annotation.Nullable;
+import javax.imageio.ImageIO;
 import javax.sound.sampled.AudioFileFormat.Type;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
@@ -15,7 +17,10 @@ import org.apache.commons.io.FilenameUtils;
 import de.sciss.jump3r.Main;
 import discordbot.utils.Functions;
 import discordbot.utils.Info;
-import discordbot.utils.media.*;
+import discordbot.utils.media.AudioTypes;
+import discordbot.utils.media.ImageTypes;
+import discordbot.utils.media.MediaType;
+import discordbot.utils.media.VideoTypes;
 import net.bramp.ffmpeg.builder.FFmpegBuilder;
 import net.bramp.ffmpeg.builder.FFmpegOutputBuilder;
 
@@ -35,7 +40,9 @@ public class Converter {
 	}
 	
 	public void convert(MediaType type, @Nullable AudioFormat formatOverride, @Nullable File outputOverride) throws IOException, UnsupportedAudioFileException, IllegalMediaFormatException {
+		
 		this.outputPath = outputOverride == null ? OUTPUT_BUILDER + type.getExtension() : outputOverride.getPath();
+		
 		if (type instanceof VideoTypes && MediaType.findFormat(FilenameUtils.getExtension(this.file.getPath())) instanceof VideoTypes) { //video -> video
 			
 			String codec;
@@ -43,7 +50,7 @@ public class Converter {
 			switch ((VideoTypes)type) {
 			case MP4 -> {
 				codec = "libx264";
-				audioCodec = "mp3";
+				audioCodec = "aac";
 			}
 			case WEBM -> {
 				codec = "libvpx";
@@ -94,6 +101,8 @@ public class Converter {
 			}
 		} else if (type instanceof ImageTypes && MediaType.findFormat(FilenameUtils.getExtension(this.file.getPath())) instanceof ImageTypes) { //image -> image
 			
+			BufferedImage img = ImageIO.read(this.file);
+			ImageIO.write(img, type.getExtension(), getOutputFile());
 			
 		} else if (type instanceof AudioTypes && MediaType.findFormat(FilenameUtils.getExtension(this.file.getPath())) instanceof VideoTypes) { //video -> audio
 			String dir = Functions.Utils.readToken(new File("src/main/resources/private/ffmpeg.prv")).replace('/', '\\');

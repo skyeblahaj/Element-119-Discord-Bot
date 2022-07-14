@@ -32,7 +32,7 @@ import discordbot.Element119;
 import discordbot.core.audio.GuildMusicManager;
 import discordbot.core.audio.PlayerManager;
 import discordbot.core.audio.spotify.LinkConverter;
-import discordbot.core.listener.FutureListener;
+import discordbot.core.math.Operations;
 import discordbot.core.network.GetRequester;
 import discordbot.core.network.PostRequester;
 import discordbot.core.render.Converter;
@@ -504,7 +504,9 @@ public class CommandRegistry {
 					Attachment toConvert = attachments.get(0);
 					if (toConvert.getSize() < 10485760) {
 						File inventory = new File("src/main/resources/cache/convert_input." + toConvert.getFileExtension());
-						toConvert.downloadToFile(inventory);
+						try {
+							toConvert.downloadToFile(inventory).get();
+						} catch (InterruptedException | ExecutionException e) {e.printStackTrace();}
 
 						try {
 							Converter convertTool = new Converter(inventory);
@@ -725,56 +727,6 @@ public class CommandRegistry {
 		} catch (IOException e) {}
 	}, "Returns a helpful message.");
 	
-	public static final Command TRIVIA = register("trivia", event -> {
-		
-		GetRequester httpTool = new GetRequester("https://jservice.io/api/random");
-		try {
-			JsonArray main = Json.createReader(httpTool.get().getEntity().getContent()).readArray();
-			
-			String question = main.getJsonObject(0).getString("question");
-			String answer = main.getJsonObject(0).getString("answer");
-			
-			while (question.isEmpty() || question.isBlank() || question == null || answer.isEmpty() || answer.isBlank() || answer == null) {
-				httpTool = new GetRequester("https://jservice.io/api/random");
-				main = Json.createReader(httpTool.get().getEntity().getContent()).readArray();
-				question = main.getJsonObject(0).getString("question");
-				answer = main.getJsonObject(0).getString("answer");
-			}
-			
-			httpTool.close();
-			
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.buildEmbed("Trivia", new Color(0x5442f5), 
-							new Field("Question:", question, false),
-							new Field("Hurry!", "You have ten seconds.", false)));
-			
-			FutureListener future = new FutureListener(event.getChannel(), answer);
-			future.register();
-			final String finalAnswer;
-			finalAnswer = answer;
-			
-			new Thread(() -> {
-				int timeout = 0;
-				while (!future.check() || timeout >= 10) {
-					try {
-						Thread.sleep(1000);
-						System.out.println(timeout);
-						System.out.println(future.check());
-						timeout++;
-					} catch (InterruptedException e) {e.printStackTrace();}
-				}
-				
-				if (future.check()) {
-					Functions.Messages.sendEmbeded(event.getChannel(), 
-							Functions.Messages.buildEmbed("Trivia", new Color(0x00ff00), 
-									new Field("Correct", "\"" + finalAnswer + "\" is correct.", false)));
-				}
-				
-			});
-			
-		} catch (IOException e) {}
-	});
-	
 	public static final Command RENDER = register("render", event -> {
 		String[] args = Functions.Messages.multiArgs(event.getMessage());
 		List<Attachment> attachments = event.getMessage().getAttachments();
@@ -787,7 +739,9 @@ public class CommandRegistry {
 		}
 		
 		if (args.length - 1 < imageAmount * 2) {
-			
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Include two integers per image."));
+			return;
 		}
 		
 		int[] positions = new int[args.length - 1];
@@ -889,6 +843,99 @@ public class CommandRegistry {
 		
 		Functions.Messages.sendFileReply(event.getMessage(), outLoc);
 	}, "Scales an image to the specified width and height.");
+	
+	public static final Command MATH = register("math", event -> {
+		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		
+		if (args.length < 4) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Specify an operation and integers."));
+			return;
+		}
+		
+		Operations operation = null;
+		switch (args[1]) {
+			case "add" -> operation = Operations.ADD;
+			case "+" -> operation = Operations.ADD;
+			case "plus" -> operation = Operations.ADD; 
+			case "addition" -> operation = Operations.ADD; 
+			case "sub" -> operation = Operations.SUBTRACT;
+			case "-" -> operation = Operations.SUBTRACT; 
+			case "subtract" -> operation = Operations.SUBTRACT;
+			case "subtraction" -> operation = Operations.SUBTRACT;
+			case "mult" -> operation = Operations.MULTIPLY;
+			case "*" -> operation = Operations.MULTIPLY;
+			case "multiply" -> operation = Operations.MULTIPLY;
+			case "multiplication" -> operation = Operations.MULTIPLY;
+			case "div" -> operation = Operations.DIVIDE;
+			case "/" -> operation = Operations.DIVIDE;
+			case "divide" -> operation = Operations.DIVIDE;
+			case "division" -> operation = Operations.DIVIDE;
+			case "exp" -> operation = Operations.POWER;
+			case "^" -> operation = Operations.POWER;
+			case "exponential" -> operation = Operations.POWER;
+			case "exponent" -> operation = Operations.POWER;
+			case "log" -> operation = Operations.LOG;
+			case "logarithm" -> operation = Operations.LOG;
+			case "logarithmic" -> operation = Operations.LOG;
+			default -> {
+				Functions.Messages.sendEmbeded(event.getChannel(), 
+						Functions.Messages.errorEmbed(event.getMessage(), "Math operation not found. Do \"->cmdhelp math\" for all operations."));
+				return;
+			}
+		}
+		
+		double[] params = new double[args.length - 2];
+		for (int i = 0; i < args.length - 2; i++) {
+			params[i] = Double.parseDouble(args[i + 2]);
+		}
+		
+		double output = params[0];
+		
+		switch (operation) {
+		
+			case ADD -> {
+				for (int i = 1; i < params.length; i++) {
+					output += params[i];
+				}
+			}
+			
+			case SUBTRACT -> {
+				for (int i = 1; i < params.length; i++) {
+					output -= params[i];
+				}
+			}
+			
+			case MULTIPLY -> {
+				for (int i = 1; i < params.length; i++) {
+					output *= params[i];
+				}
+			}
+			
+			case DIVIDE -> {
+				for (int i = 1; i < params.length; i++) {
+					output /= params[i];
+				}
+			}
+			
+			case POWER -> {
+				for (int i = 1; i < params.length; i++) {
+					output = Math.pow(output, params[i]);
+				}
+			}
+			
+			case LOG -> {
+				for (int i = 1; i < params.length; i++) {
+					output = Math.log(params[i]) / Math.log(output);
+				}
+			}	
+		}
+		
+		Functions.Messages.sendEmbeded(event.getChannel(), 
+				Functions.Messages.buildEmbed("Math", new Color(0x0000ff),
+						new Field("Output:", output + "", false)));
+		
+	}, "Basic bitwise math. Specify the operation before the numbers. To specify an operation, use its name, symbol, or abbreviation.\nExample: \"->math log 10 100\" returns 2.");
 	
 //////////////////////////////////////////////////////////////////////////////////////////////////
 

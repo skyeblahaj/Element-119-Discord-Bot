@@ -16,9 +16,7 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 
 import discordbot.Element119;
-import discordbot.core.event.ExtraRegistry;
 import discordbot.utils.Functions;
-import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
 public class ManualControl {
@@ -62,7 +60,7 @@ public class ManualControl {
 				JFrame menu = new JFrame("Settings Menu");
 				menu.setSize(resolution.width / 4, resolution.height / 4);
 				menu.setLocationRelativeTo(null);
-				menu.getContentPane().setLayout(new GridLayout(4,2));
+				menu.getContentPane().setLayout(new GridLayout(4,4));
 				
 				menu.getContentPane().add(new JPanel().add(new JLabel("Server Target ID:")));
 				JTextField server = new JTextField();
@@ -74,8 +72,7 @@ public class ManualControl {
 				menu.getContentPane().add(new JPanel().add(newNickname));
 				JButton changeNickname = new JButton("Confirm");
 				changeNickname.addActionListener($1 -> {
-					Guild guild = Element119.mainJDA.getGuildById(server.getText());
-					guild.modifyNickname(ExtraRegistry.BOT_MEMBER.get(guild), newNickname.getText());
+					event.getJDA().getGuildById(server.getText()).getSelfMember().modifyNickname(newNickname.getText()).complete();
 				});
 				menu.getContentPane().add(new JPanel().add(changeNickname));
 				

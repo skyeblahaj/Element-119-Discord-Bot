@@ -17,4 +17,5 @@ custom_interface/
 *.aiff
 *.aifc
 *.webp
+*.jpeg
 motd.html

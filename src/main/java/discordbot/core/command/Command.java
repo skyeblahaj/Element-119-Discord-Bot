@@ -24,6 +24,7 @@ public class Command extends BasicEventRegistry {
 	
 	@Override
 	public void onMessageReceived(MessageReceivedEvent event) {
+		if (event.getAuthor().isBot()) return;
 		if (Functions.Utils.startsWithIgnoreCase(event.getMessage().getContentRaw(), Info.PREFIX + this.name) && ManualControl.commandToggle) this.action.action(event);
 	}
 	

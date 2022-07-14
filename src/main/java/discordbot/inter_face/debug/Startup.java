@@ -9,9 +9,6 @@ public class Startup extends BasicEventRegistry {
 	public void onReady(ReadyEvent event) {
 		
 		System.out.println("---START OF STARTUP DEBUG---");
-		
-		
-		
 		System.out.println("---END OF STARTUP DEBUG---");
 	}
 }

@@ -9,6 +9,7 @@ import java.util.List;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
+import javax.json.JsonString;
 
 import discordbot.Element119;
 import discordbot.core.command.Command;
@@ -42,7 +43,7 @@ public class CustomGuildFeatures implements Registrable {
 					case "message" -> {
 						final Command cmd = new Command(name, event -> {
 							if (event.getGuild().equals(guild)) {
-								Functions.Messages.sendMessage(event.getChannel(), value.toString().substring(1, value.toString().length() - 1));
+								Functions.Messages.sendMessage(event.getChannel(), ((JsonString) value).getString());
 							}
 						});
 						customCommands.add(cmd);
