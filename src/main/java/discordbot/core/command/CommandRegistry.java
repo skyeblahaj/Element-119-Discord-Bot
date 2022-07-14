@@ -102,7 +102,7 @@ public class CommandRegistry {
 	}
 	
 //////////////////////////////////////////////////////////////////////////////////////////////////
-	
+//CASUAL COMMANDS
 	public static final Command CMD_HELP = register("cmdhelp", event -> {
 		String[] args = Functions.Messages.multiArgs(event.getMessage());
 		if (args.length < 2) {
@@ -847,9 +847,9 @@ public class CommandRegistry {
 	public static final Command MATH = register("math", event -> {
 		String[] args = Functions.Messages.multiArgs(event.getMessage());
 		
-		if (args.length < 4) {
+		if (args.length < 2) {
 			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Specify an operation and integers."));
+					Functions.Messages.errorEmbed(event.getMessage(), "Specify an operation."));
 			return;
 		}
 		
@@ -878,11 +878,19 @@ public class CommandRegistry {
 			case "log" -> operation = Operations.LOG;
 			case "logarithm" -> operation = Operations.LOG;
 			case "logarithmic" -> operation = Operations.LOG;
+			case "f-c" -> {operation = Operations.OTHER; Operations.OTHER.setParametersNeeded(1);}
+			case "c-f" -> {operation = Operations.OTHER; Operations.OTHER.setParametersNeeded(1);}
 			default -> {
 				Functions.Messages.sendEmbeded(event.getChannel(), 
 						Functions.Messages.errorEmbed(event.getMessage(), "Math operation not found. Do \"->cmdhelp math\" for all operations."));
 				return;
 			}
+		}
+		
+		if (args.length < operation.paramsNeeded() + 2) { //add two to bypass command request and operation request
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Specify integers."));
+			return;
 		}
 		
 		double[] params = new double[args.length - 2];
@@ -920,15 +928,23 @@ public class CommandRegistry {
 			
 			case POWER -> {
 				for (int i = 1; i < params.length; i++) {
-					output = Math.pow(output, params[i]);
+					output = Operations.EXPONENTIAL.carry(output, params[i]);
 				}
 			}
 			
 			case LOG -> {
 				for (int i = 1; i < params.length; i++) {
-					output = Math.log(params[i]) / Math.log(output);
+					output = Operations.BASE_LOG.carry(params[i], output);
 				}
-			}	
+			}
+			
+			case OTHER -> {
+				if (args[1].equalsIgnoreCase("f-c")) {
+					output = Operations.FAHRENHEIT_TO_CELSIUS.carry(params[1]);
+				} else if (args[1].equalsIgnoreCase("c-f")) {
+					output = Operations.CELSIUS_TO_FAHRENHEIT.carry(params[1]);
+				}
+			}
 		}
 		
 		Functions.Messages.sendEmbeded(event.getChannel(), 
@@ -938,6 +954,7 @@ public class CommandRegistry {
 	}, "Basic bitwise math. Specify the operation before the numbers. To specify an operation, use its name, symbol, or abbreviation.\nExample: \"->math log 10 100\" returns 2.");
 	
 //////////////////////////////////////////////////////////////////////////////////////////////////
+//OWNER COMMANDS
 
 	public static final OwnerCommand BOT_SHUTDOWN = registerOwner("botshutdown", event -> {
 		Functions.Messages.sendMessage(event.getChannel(), "Bot is shutting down...");
@@ -972,7 +989,7 @@ public class CommandRegistry {
 	}, "Direct system runtime access.");
 	
 //////////////////////////////////////////////////////////////////////////////////////////////////
-	
+//PERMISSION COMMANDS	
 	public static final PermissionCommand CLEAR = registerPermission("clear", event -> {
 		String[] args = Functions.Messages.multiArgs(event.getMessage());
 		if (args.length < 2) Functions.Messages.sendEmbeded(event.getChannel(), 
