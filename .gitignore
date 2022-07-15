@@ -1,6 +1,7 @@
 .settings/*
 target/
 custom_interface/
+api/
 *.prefs
 *.prv
 *.class
