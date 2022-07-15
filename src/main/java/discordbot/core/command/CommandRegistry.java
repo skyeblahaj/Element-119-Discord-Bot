@@ -1100,6 +1100,15 @@ public class CommandRegistry {
 		
 	}, "Draws text over an image. There are many parameters needed. These are:\nAn attachment, X coordinate, Y coordinate, Text color, Text font, Font size, and the rest being whatever text you want to be drawn.");
 	
+	public static final Command API = register("api", event -> {
+		Functions.Messages.sendEmbeded(event.getChannel(), 
+				Functions.Messages.buildEmbed("Element-119 API", new Color(0x34eba1), 
+						new Field("How to set up:", "This API is for implementing your own custom features into your server. To add these, server members with **Administrator** access can "
+								+ "use the \"->custom\" command, attachming a **.json** file containing the features. To build the file correctly, check out the documentation over on the GitHub page.", false),
+						new Field("Link:", "https://github.com/skyeblahaj/Element-119-Discord-Bot", false)
+						).setThumbnail(event.getJDA().getSelfUser().getEffectiveAvatarUrl()));
+	}, "API Instructions.");
+	
 //////////////////////////////////////////////////////////////////////////////////////////////////
 //OWNER COMMANDS
 

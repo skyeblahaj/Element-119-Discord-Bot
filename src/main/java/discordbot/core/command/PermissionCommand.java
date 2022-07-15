@@ -35,7 +35,7 @@ public class PermissionCommand extends Command {
 					}
 				}
 			}
-			if (ManualControl.overrideToggle && event.getAuthor().getId().equals(Info.OWNER_ID)) {
+			if (ManualControl.overrideToggle && event.getAuthor().getId().equals(Info.OWNER_ID)) { //debug in servers where i miss perms (vulnerable to exploiting if the bot has permissions, so owners will need to trust me until bot is out of heavy development)
 				isAllowed = true;
 			}
 			if (msgBool && isAllowed && ManualControl.commandToggle) this.action.action(event);
