@@ -1,13 +1,13 @@
 .settings/*
 target/
 custom_interface/
-api/
+cache/
+*.png
 *.prefs
 *.prv
 *.class
 *.wav
 *.mp4
-*.png
 *.gif
 *.jpg
 *.mp3
