@@ -1,8 +1,7 @@
 .settings/*
 target/
 custom_interface/
-cache/
-*.png
+src/main/resources/
 *.prefs
 *.prv
 *.class
