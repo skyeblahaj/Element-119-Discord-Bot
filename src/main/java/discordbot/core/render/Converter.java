@@ -39,7 +39,7 @@ public class Converter {
 				.setInput(Info.FFPROBE.probe(file.getPath()));
 	}
 	
-	public void convert(MediaType type, @Nullable AudioFormat formatOverride, @Nullable File outputOverride) throws IOException, UnsupportedAudioFileException, IllegalMediaFormatException {
+	public void convert(MediaType type, @Nullable AudioFormat formatOverride, @Nullable File outputOverride) throws IOException, UnsupportedAudioFileException, IllegalMediaException {
 		
 		this.outputPath = outputOverride == null ? OUTPUT_BUILDER + type.getExtension() : outputOverride.getPath();
 		
@@ -113,7 +113,7 @@ public class Converter {
 				new ProcessBuilder(cmdArgs).start().waitFor();
 			} catch (Exception e) {e.printStackTrace();}
 			
-		} else throw new IllegalMediaFormatException("Cannot find a media type related to file extension.");
+		} else throw new IllegalMediaException("Cannot find a media type related to file extension.");
 	}
 	
 	private static void toMP3(File source, File output) throws IOException {

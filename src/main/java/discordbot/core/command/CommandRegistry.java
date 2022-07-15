@@ -1,8 +1,10 @@
 package discordbot.core.command;
 
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+import java.awt.image.RasterFormatException;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
@@ -36,7 +38,8 @@ import discordbot.core.math.Operations;
 import discordbot.core.network.GetRequester;
 import discordbot.core.network.PostRequester;
 import discordbot.core.render.Converter;
-import discordbot.core.render.IllegalMediaFormatException;
+import discordbot.core.render.Cropper;
+import discordbot.core.render.IllegalMediaException;
 import discordbot.core.render.ImageLayerer;
 import discordbot.core.render.Scaler;
 import discordbot.inter_face.custom.CustomGuildFeatures;
@@ -185,7 +188,7 @@ public class CommandRegistry {
 		String[] args = Functions.Messages.multiArgs(event.getMessage());
 		if (args.length < 2) {
 			Functions.Messages.sendEmbeded(event.getChannel(),
-					Functions.Messages.buildEmbed(event.getMember().getNickname() + "'s Avatar",
+					Functions.Messages.buildEmbed(event.getMember().getEffectiveName() + "'s Avatar",
 					new Color(0xffffff),
 					event.getMember().getEffectiveAvatarUrl()));
 		} else if (Functions.Messages.isPinging(args[1])) {
@@ -305,7 +308,7 @@ public class CommandRegistry {
 					loc = "src/main/resources/cache/audioplayertemp.mp3";
 					Converter convertTool = new Converter(dir);
 					convertTool.convert(AudioTypes.MP3, null, new File(loc));
-				} catch (IOException | IllegalMediaFormatException | UnsupportedAudioFileException e) {e.printStackTrace();}
+				} catch (IOException | IllegalMediaException | UnsupportedAudioFileException e) {e.printStackTrace();}
 				
 				if (!manager.isConnected()) {
 					manager.openAudioConnection(event.getMember().getVoiceState().getChannel()); 
@@ -512,7 +515,7 @@ public class CommandRegistry {
 							Converter convertTool = new Converter(inventory);
 							convertTool.convert(MediaType.findFormat(args[1]), null, null);
 							Functions.Messages.sendFileReply(event.getMessage(), convertTool.getOutputFile());
-						} catch (IllegalMediaFormatException e) {
+						} catch (IllegalMediaException e) {
 							Functions.Messages.sendEmbeded(event.getChannel(), Functions.Messages.errorEmbed(
 									event.getMessage(), "Format provided does not support the media type provided."));
 						} catch (UnsupportedAudioFileException e) {
@@ -953,6 +956,150 @@ public class CommandRegistry {
 		
 	}, "Basic bitwise math. Specify the operation before the numbers. To specify an operation, use its name, symbol, or abbreviation.\nExample: \"->math log 10 100\" returns 2.");
 	
+	public static final Command CROP = register("crop", event -> {
+		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		if (event.getMessage().getAttachments().size() <= 0) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Include an attachment."));
+			return;
+		}
+		if (args.length < 2) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Include at least one integer."));
+			return;
+		}
+		Attachment toCrop = event.getMessage().getAttachments().get(0);
+		if (!(MediaType.findFormat(toCrop.getFileExtension()) instanceof ImageTypes)) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Attachment must be an image."));
+			return;
+		}
+		File input = new File("src/main/resources/cache/cropIn." + toCrop.getFileExtension());
+		try {
+			FileUtils.copyURLToFile(new URL(toCrop.getProxyUrl()), input);
+			BufferedImage in = ImageIO.read(input);
+			
+			int top = 1, right = 1, bottom = 1, left = 1;
+			try {
+				if (args.length >= 2) top = Integer.parseInt(args[1]);
+				if (args.length >= 3) right = Integer.parseInt(args[2]);
+				if (args.length >= 4) bottom = Integer.parseInt(args[3]);
+				if (args.length > 4) left = Integer.parseInt(args[4]);
+			} catch (NumberFormatException e) {
+				Functions.Messages.sendEmbeded(event.getChannel(), 
+						Functions.Messages.errorEmbed(event.getMessage(), "Parameters are not integers."));
+				return;
+			}
+			
+			File output = new File("src/main/resources/cache/cropOutput.png");
+			try {
+				ImageIO.write(new Cropper(in).crop(top, right, bottom, left), "png", output);
+			} catch (RasterFormatException e) {
+				Functions.Messages.sendEmbeded(event.getChannel(), 
+						Functions.Messages.errorEmbed(event.getMessage(), "Invalid parameters relating to the image. Perhaps the integers you input are bigger than the image's dimensions.\nUse \"->mediainfo\" to get the dimensions of an attachment.\nUse \"->cmdhelp crop\" for instructions on the cropping procedure."));
+				return;
+			}
+			Functions.Messages.sendFileReply(event.getMessage(), output);
+			
+		} catch (IOException e) {}
+	}, "Crops an image from all sides. Input integers representing pixels to cut into the side. The rotation for parameters is clockwise staring north.\nExample: \"->crop 10 20 30 40\" will cut into the top 10 pixels, the right 20 pixels, the bottom 30 pixels, and the left 40 pixels.");
+	
+	public static final Command MEDIA_INFO = register("mediainfo", event -> {
+		if (event.getMessage().getAttachments().size() <= 0) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Include an attachment."));
+			return;
+		}
+		Attachment infoImg = event.getMessage().getAttachments().get(0);
+		int x = infoImg.getWidth(), y = infoImg.getHeight();
+		if (x == -1 || y == -1) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Attachment must be a video or image."));
+			return;
+		}
+		
+		Functions.Messages.sendEmbeded(event.getChannel(), 
+				Functions.Messages.buildEmbed("Media Info", new Color(0x0000ff), 
+						new Field("File name:", infoImg.getFileName(), false),
+						new Field("Width:", x + "px", true),
+						new Field("Height:", y + "px", true)).setThumbnail(infoImg.getProxyUrl()));
+		
+	}, "Retrieves information of the image provided.");
+	
+	public static final Command DRAW_TEXT = register("drawtext", event -> {
+		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		
+		if (event.getMessage().getAttachments().size() <= 0) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Include an attachment."));
+			return;
+		}
+		Attachment toDraw = event.getMessage().getAttachments().get(0);
+		if (!(MediaType.findFormat(toDraw.getFileExtension()) instanceof ImageTypes)) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Attachment must be an image."));
+			return;
+		}
+		if (args.length < 7) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Include two integers (x and y), a color (string or hexadecimal), a font, the font size, and a string."));
+			return;
+		}
+		
+		int[] coords = new int[2];
+		try {
+			coords[0] = Integer.parseInt(args[1]);
+			coords[1] = Integer.parseInt(args[2]);
+		} catch (NumberFormatException e) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Parameters are not integers."));
+			return;
+		}
+		Color textColor = Functions.Rendering.findColor(args[3]);
+		if (textColor == null) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Color not found. If you think this is a problem and you entered a valid color, please report this."));
+			return;
+		}
+		int fontSize = 0;
+		try {
+			fontSize = Integer.parseInt(args[5]);
+		} catch (NumberFormatException e) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Font size is not an integer."));
+			return;
+		}
+		Font font = Functions.Rendering.findFont(args[4] + "-" + fontSize);
+		if (font == null) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Font not found. If you think this is a problem and you entered a valid font, please report this."));
+			return;
+		}
+		
+		String inputText = "";
+		for (int i = 6; i < args.length; i++) {
+			inputText += " " + args[i];
+		}
+		
+		try {
+			File loc = new File("src/main/resources/cache/drawInput." + toDraw.getFileExtension());
+			File out = new File("src/main/resources/cache/drawOutput.png");
+			FileUtils.copyURLToFile(new URL(toDraw.getProxyUrl()), loc);
+			
+			BufferedImage img = ImageIO.read(loc);
+			Graphics2D g = img.createGraphics();
+			g.setFont(font);
+			g.setColor(textColor);
+			g.drawString(inputText.trim(), coords[0], coords[1]);
+			g.dispose();
+			
+			ImageIO.write(img, "png", out);
+			Functions.Messages.sendFileReply(event.getMessage(), out);
+			
+		} catch (IOException e) {}
+		
+	}, "Draws text over an image. There are many parameters needed. These are:\nAn attachment, X coordinate, Y coordinate, Text color, Text font, Font size, and the rest being whatever text you want to be drawn.");
+	
 //////////////////////////////////////////////////////////////////////////////////////////////////
 //OWNER COMMANDS
 
@@ -989,7 +1136,8 @@ public class CommandRegistry {
 	}, "Direct system runtime access.");
 	
 	public static final OwnerCommand TOGGLE_OVERRIDE = registerOwner("override", event -> {
-		ManualControl.overrideToggle = true;
+		if (ManualControl.overrideToggle) ManualControl.overrideToggle = false;
+		else ManualControl.overrideToggle = true;
 	});
 	
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1013,10 +1161,20 @@ public class CommandRegistry {
 	}, "Purges the amount of previous messages specified as a parameter.", Permission.MESSAGE_MANAGE);
 	
 	public static final PermissionCommand CUSTOM = registerPermission("custom", event -> {
+		String[] args = Functions.Messages.multiArgs(event.getMessage());
 		List<Attachment> atts = event.getMessage().getAttachments();
 		File loc = new File("src/main/resources/custom_interface/" + event.getGuild().getId() + ".json");
-		if (loc.exists()) Functions.Messages.sendEmbeded(event.getChannel(), 
+		
+		if (loc.exists()) {
+			if (args.length > 1) {
+				if (args[1].equalsIgnoreCase("get")) {
+					Functions.Messages.sendFile(event.getChannel(), loc);
+					return;
+				}
+			}
+			Functions.Messages.sendEmbeded(event.getChannel(), 
 				Functions.Messages.errorEmbed(event.getMessage(), "Custom server features already exist."));
+		}
 		else {
 			if (atts.size() <= 0) {
 				Functions.Messages.sendEmbeded(event.getChannel(), 
@@ -1054,6 +1212,21 @@ public class CommandRegistry {
 					Functions.Messages.errorEmbed(event.getMessage(), "Custom server features do not currently exist."));
 		}
 	}, "Removes any custom server features.", Permission.ADMINISTRATOR);
+	
+	public static final PermissionCommand CHANGE_NICKNAME = registerPermission("nickname", event -> {
+		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		
+		if (args.length < 2) {
+			event.getGuild().getSelfMember().modifyNickname("").complete();
+		} else {
+			event.getGuild().getSelfMember().modifyNickname(args[1]).complete();
+		}
+		
+		Functions.Messages.sendEmbeded(event.getChannel(), 
+				Functions.Messages.buildEmbed("Change Nickname", new Color(0x00ff00), 
+						new Field("Success", "Nickname changed to " + (args.length < 2 ? event.getJDA().getSelfUser().getName() : args[1]), false)));
+		
+	}, "Changes the bot's nickname. If no nickname is specified, it will change to the bot's username.", Permission.NICKNAME_MANAGE);
 	
 //////////////////////////////////////////////////////////////////////////////////////////////////
 	

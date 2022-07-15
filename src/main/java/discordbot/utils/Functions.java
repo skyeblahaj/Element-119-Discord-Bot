@@ -1,6 +1,7 @@
 package discordbot.utils;
 
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.image.BufferedImage;
@@ -209,6 +210,47 @@ public class Functions{
 				renderer.drawImage(img, 0, y - img.getHeight(), null);
 			}
 			return out;
+		}
+		
+		public static Color findColor(String search) {
+			try {
+				return Color.decode(search);
+			} catch (NumberFormatException e) {
+				switch (search.toLowerCase()) {
+					case "red" : return Color.RED;
+					case "crimson" : return new Color(0x852424);
+					case "scarlet" : return new Color(0xf04526);
+					case "orange" : return Color.ORANGE;
+					case "gold" : return new Color(0xbfa10a);
+					case "yellow" : return Color.YELLOW;
+					case "olive" : return new Color(0x615c07);
+					case "lime" : return new Color(0x07f517);
+					case "green" : return Color.GREEN;
+					case "cyan" : return Color.CYAN;
+					case "aqua" : return new Color(0x26e6f0);
+					case "blue" : return Color.BLUE;
+					case "indigo" : return new Color(0x5f26f0);
+					case "purple" : return new Color(0x7e26f0);
+					case "violet" : return new Color(0xc126f0);
+					case "magenta" : return Color.MAGENTA;
+					case "pink" : return Color.PINK;
+					case "white" : return Color.WHITE;
+					case "black" : return Color.BLACK;
+					case "gray" : return Color.GRAY;
+					case "lgray" : return Color.LIGHT_GRAY;
+					case "dgray" : return Color.DARK_GRAY;
+					case "brown" : return new Color(0x613407);
+					default : return null;
+				}
+			}
+		}
+		
+		public static Font findFont(String search) {
+			Font f = Font.decode(search);
+			if (f.equals(new Font(Font.DIALOG, Font.PLAIN, 12))) {
+				return null;
+			}
+			return f;
 		}
 	}
 	

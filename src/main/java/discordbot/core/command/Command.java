@@ -5,6 +5,7 @@ import discordbot.inter_face.debug.ManualControl;
 import discordbot.utils.Functions;
 import discordbot.utils.Info;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
 public class Command extends BasicEventRegistry {
 	
@@ -25,7 +26,11 @@ public class Command extends BasicEventRegistry {
 	@Override
 	public void onMessageReceived(MessageReceivedEvent event) {
 		if (event.getAuthor().isBot()) return;
-		if (Functions.Utils.startsWithIgnoreCase(event.getMessage().getContentRaw(), Info.PREFIX + this.name) && ManualControl.commandToggle) this.action.action(event);
+		try {
+			if (Functions.Utils.startsWithIgnoreCase(event.getMessage().getContentRaw(), Info.PREFIX + this.name) && ManualControl.commandToggle) this.action.action(event);
+		} catch (InsufficientPermissionException e) {
+			System.err.println("Bot does not have permission to send messages in channel \"" + event.getChannel().toString() + "\"");
+		}
 	}
 	
 	public String getName() {
