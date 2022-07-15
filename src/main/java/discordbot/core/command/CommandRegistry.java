@@ -943,9 +943,9 @@ public class CommandRegistry {
 			
 			case OTHER -> {
 				if (args[1].equalsIgnoreCase("f-c")) {
-					output = Operations.FAHRENHEIT_TO_CELSIUS.carry(params[1]);
+					output = Operations.FAHRENHEIT_TO_CELSIUS.carry(params[0]);
 				} else if (args[1].equalsIgnoreCase("c-f")) {
-					output = Operations.CELSIUS_TO_FAHRENHEIT.carry(params[1]);
+					output = Operations.CELSIUS_TO_FAHRENHEIT.carry(params[0]);
 				}
 			}
 		}
