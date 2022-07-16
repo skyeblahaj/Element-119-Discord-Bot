@@ -1,5 +1,6 @@
 package discordbot.core.command;
 
+import discordbot.core.event.actions.MessageReceivedAction;
 import discordbot.inter_face.debug.ManualControl;
 import discordbot.utils.Functions;
 import discordbot.utils.Info;
@@ -11,12 +12,12 @@ public class PermissionCommand extends Command {
 
 	private Permission[] perms;
 	
-	public PermissionCommand(String name, CommandAction action, Permission... perms) {
+	public PermissionCommand(String name, MessageReceivedAction action, Permission... perms) {
 		super(name, action);
 		this.perms = perms;
 	}
 	
-	public PermissionCommand(String name, CommandAction action, String help, Permission... perms) {
+	public PermissionCommand(String name, MessageReceivedAction action, String help, Permission... perms) {
 		super(name, action, help);
 		this.perms = perms;
 	}

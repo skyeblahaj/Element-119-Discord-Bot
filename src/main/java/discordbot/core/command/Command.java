@@ -1,6 +1,7 @@
 package discordbot.core.command;
 
 import discordbot.core.event.BasicEventRegistry;
+import discordbot.core.event.actions.MessageReceivedAction;
 import discordbot.inter_face.debug.ManualControl;
 import discordbot.utils.Functions;
 import discordbot.utils.Info;
@@ -11,15 +12,15 @@ public class Command extends BasicEventRegistry {
 	
 	protected String name;
 	protected String help;
-	protected CommandAction action;
+	protected MessageReceivedAction action;
 	
-	public Command(String name, CommandAction action, String help) {
+	public Command(String name, MessageReceivedAction action, String help) {
 		this.name = name;
 		this.action = action;
 		this.help = help;
 	}
 	
-	public Command(String name, CommandAction action) {
+	public Command(String name, MessageReceivedAction action) {
 		this(name, action, null);
 	}
 	

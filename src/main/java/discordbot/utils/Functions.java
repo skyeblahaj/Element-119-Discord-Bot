@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Optional;
 import java.util.Random;
 
 import javax.json.Json;
@@ -212,37 +213,39 @@ public class Functions{
 			return out;
 		}
 		
-		public static Color findColor(String search) {
+		public static Optional<Color> findColor(String search) {
+			Color out;
 			try {
-				return Color.decode(search);
+				out = Color.decode(search);
 			} catch (NumberFormatException e) {
 				switch (search.toLowerCase()) {
-					case "red" : return Color.RED;
-					case "crimson" : return new Color(0x852424);
-					case "scarlet" : return new Color(0xf04526);
-					case "orange" : return Color.ORANGE;
-					case "gold" : return new Color(0xbfa10a);
-					case "yellow" : return Color.YELLOW;
-					case "olive" : return new Color(0x615c07);
-					case "lime" : return new Color(0x07f517);
-					case "green" : return Color.GREEN;
-					case "cyan" : return Color.CYAN;
-					case "aqua" : return new Color(0x26e6f0);
-					case "blue" : return Color.BLUE;
-					case "indigo" : return new Color(0x5f26f0);
-					case "purple" : return new Color(0x7e26f0);
-					case "violet" : return new Color(0xc126f0);
-					case "magenta" : return Color.MAGENTA;
-					case "pink" : return Color.PINK;
-					case "white" : return Color.WHITE;
-					case "black" : return Color.BLACK;
-					case "gray" : return Color.GRAY;
-					case "lgray" : return Color.LIGHT_GRAY;
-					case "dgray" : return Color.DARK_GRAY;
-					case "brown" : return new Color(0x613407);
-					default : return null;
+					case "red" : out = Color.RED;
+					case "crimson" : out = new Color(0x852424);
+					case "scarlet" : out = new Color(0xf04526);
+					case "orange" : out = Color.ORANGE;
+					case "gold" : out = new Color(0xbfa10a);
+					case "yellow" : out = Color.YELLOW;
+					case "olive" : out = new Color(0x615c07);
+					case "lime" : out = new Color(0x07f517);
+					case "green" : out = Color.GREEN;
+					case "cyan" : out = Color.CYAN;
+					case "aqua" : out = new Color(0x26e6f0);
+					case "blue" : out = Color.BLUE;
+					case "indigo" : out = new Color(0x5f26f0);
+					case "purple" : out = new Color(0x7e26f0);
+					case "violet" : out = new Color(0xc126f0);
+					case "magenta" : out = Color.MAGENTA;
+					case "pink" : out = Color.PINK;
+					case "white" : out = Color.WHITE;
+					case "black" : out = Color.BLACK;
+					case "gray" : out = Color.GRAY;
+					case "lgray" : out = Color.LIGHT_GRAY;
+					case "dgray" : out = Color.DARK_GRAY;
+					case "brown" : out = new Color(0x613407);
+					default : out = null;
 				}
 			}
+			return Optional.ofNullable(out);
 		}
 		
 		public static Font findFont(String search) {

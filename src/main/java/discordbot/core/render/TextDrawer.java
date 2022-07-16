@@ -5,6 +5,7 @@ import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 
+import discordbot.core.exceptions.IllegalMediaException;
 import discordbot.utils.Functions;
 
 public class TextDrawer {
@@ -26,7 +27,7 @@ public class TextDrawer {
 	}
 	
 	public TextDrawer(BufferedImage img, String color, String font, int fontSize) throws IllegalMediaException {
-		this(img, Functions.Rendering.findColor(color), Functions.Rendering.findFont(font + "-" + fontSize));
+		this(img, Functions.Rendering.findColor(color).get(), Functions.Rendering.findFont(font + "-" + fontSize));
 	}
 	
 	public BufferedImage draw(String string, int x, int y) {

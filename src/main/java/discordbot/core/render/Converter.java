@@ -15,6 +15,7 @@ import javax.sound.sampled.UnsupportedAudioFileException;
 import org.apache.commons.io.FilenameUtils;
 
 import de.sciss.jump3r.Main;
+import discordbot.core.exceptions.IllegalMediaException;
 import discordbot.utils.Functions;
 import discordbot.utils.Info;
 import discordbot.utils.media.AudioTypes;

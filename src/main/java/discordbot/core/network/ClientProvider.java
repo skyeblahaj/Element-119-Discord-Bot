@@ -8,7 +8,7 @@ import org.apache.http.impl.client.HttpClients;
 
 public abstract class ClientProvider implements Closeable {
 
-	protected CloseableHttpClient client;
+	protected final CloseableHttpClient client;
 	
 	protected ClientProvider() {
 		this.client = HttpClients.createDefault();

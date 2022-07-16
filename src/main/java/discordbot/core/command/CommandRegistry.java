@@ -34,12 +34,14 @@ import discordbot.Element119;
 import discordbot.core.audio.GuildMusicManager;
 import discordbot.core.audio.PlayerManager;
 import discordbot.core.audio.spotify.LinkConverter;
+import discordbot.core.event.actions.MessageReceivedAction;
+import discordbot.core.exceptions.IllegalMediaException;
+import discordbot.core.exceptions.NotFoundException;
 import discordbot.core.math.Operations;
 import discordbot.core.network.GetRequester;
 import discordbot.core.network.PostRequester;
 import discordbot.core.render.Converter;
 import discordbot.core.render.Cropper;
-import discordbot.core.render.IllegalMediaException;
 import discordbot.core.render.ImageLayerer;
 import discordbot.core.render.Scaler;
 import discordbot.inter_face.custom.CustomGuildFeatures;
@@ -74,33 +76,33 @@ public class CommandRegistry {
 	
 	public static final List<List<? extends Command>> ALL_COMMANDS = List.of(COMMANDS, OWNER_COMMANDS, PERMISSION_COMMANDS);
 	
-	private static Command register(String name, CommandAction action, String help) {
+	private static Command register(String name, MessageReceivedAction action, String help) {
 		Command cmd = new Command(name, action, help);
 		COMMANDS.add(cmd);
 		return cmd;
 	}
 	
-	private static OwnerCommand registerOwner(String name, CommandAction action, String help) {
+	private static OwnerCommand registerOwner(String name, MessageReceivedAction action, String help) {
 		OwnerCommand cmd = new OwnerCommand(name, action, help);
 		OWNER_COMMANDS.add(cmd);
 		return cmd;
 	}
 	
-	private static PermissionCommand registerPermission(String name, CommandAction action, String help, Permission... perms) {
+	private static PermissionCommand registerPermission(String name, MessageReceivedAction action, String help, Permission... perms) {
 		PermissionCommand cmd = new PermissionCommand(name, action, help, perms);
 		PERMISSION_COMMANDS.add(cmd);
 		return cmd;
 	}
 	
-	private static Command register(String name, CommandAction action) {
+	private static Command register(String name, MessageReceivedAction action) {
 		return register(name, action, null);
 	}
 	
-	private static OwnerCommand registerOwner(String name, CommandAction action) {
+	private static OwnerCommand registerOwner(String name, MessageReceivedAction action) {
 		return registerOwner(name, action, null);
 	}
 	
-	private static PermissionCommand registerPermission(String name, CommandAction action, Permission... perms) {
+	private static PermissionCommand registerPermission(String name, MessageReceivedAction action, Permission... perms) {
 		return registerPermission(name, action, null, perms);
 	}
 	
@@ -394,9 +396,14 @@ public class CommandRegistry {
 	
 	public static final Command VC = register("vc", event -> {
 		if (event.getMember().getVoiceState().inAudioChannel()) {
-			AudioManager manager = event.getGuild().getAudioManager();
-			if (manager.isConnected()) manager.closeAudioConnection();
-			else manager.openAudioConnection(event.getMember().getVoiceState().getChannel());
+			final GuildMusicManager manager = PlayerManager.getInstance().getMusicManager(event.getGuild());
+			AudioManager aManager = event.getGuild().getAudioManager();
+			if (aManager.isConnected()) {
+				aManager.closeAudioConnection();
+				manager.getScheduler().getPlayer().stopTrack();
+				manager.getScheduler().getQueue().clear();
+			}
+			else aManager.openAudioConnection(event.getMember().getVoiceState().getChannel());
 		} else Functions.Messages.sendEmbeded(event.getChannel(),
 					Functions.Messages.errorEmbed(event.getMessage(), "User is not in a voice channel."));
 	}, "Toggles connection to the voice channel the user is connected to.");
@@ -946,7 +953,7 @@ public class CommandRegistry {
 					output = Operations.FAHRENHEIT_TO_CELSIUS.carry(params[0]);
 				} else if (args[1].equalsIgnoreCase("c-f")) {
 					output = Operations.CELSIUS_TO_FAHRENHEIT.carry(params[0]);
-				}
+				} else throw new NotFoundException("operation not found and not caught by filter");
 			}
 		}
 		
@@ -1055,7 +1062,7 @@ public class CommandRegistry {
 					Functions.Messages.errorEmbed(event.getMessage(), "Parameters are not integers."));
 			return;
 		}
-		Color textColor = Functions.Rendering.findColor(args[3]);
+		Color textColor = Functions.Rendering.findColor(args[3]).get();
 		if (textColor == null) {
 			Functions.Messages.sendEmbeded(event.getChannel(), 
 					Functions.Messages.errorEmbed(event.getMessage(), "Color not found. If you think this is a problem and you entered a valid color, please report this."));

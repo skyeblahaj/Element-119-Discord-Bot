@@ -1,5 +1,6 @@
 package discordbot.core.command;
 
+import discordbot.core.event.actions.MessageReceivedAction;
 import discordbot.utils.Functions;
 import discordbot.utils.Info;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -7,11 +8,11 @@ import net.dv8tion.jda.api.exceptions.InsufficientPermissionException;
 
 public class OwnerCommand extends Command {
 
-	public OwnerCommand(String name, CommandAction action) {
+	public OwnerCommand(String name, MessageReceivedAction action) {
 		super(name, action);
 	}
 	
-	public OwnerCommand(String name, CommandAction action, String help) {
+	public OwnerCommand(String name, MessageReceivedAction action, String help) {
 		super(name, action, help);
 	}
 	
