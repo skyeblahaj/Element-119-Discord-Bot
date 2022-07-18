@@ -1,5 +1,7 @@
 package discordbot.core.math.chem;
 
+import discordbot.utils.Functions;
+
 public class ChemicalFormula {
 
 	private static final String REG_EXP_IONS = "/[A-Z][a-z]?\\d*|\\((?:[^()]*(?:\\(.*\\))?[^()]*)+\\)\\d+/g";
@@ -15,7 +17,7 @@ public class ChemicalFormula {
 		double output = 0;
 		
 		String[] split = this.formula.split(REG_EXP_IONS);
-		
+		Functions.Debug.printArray(split);
 		for (String s : split) {
 			String[] char_num = s.split(REG_EXP_CHAR_AND_NUM);
 			

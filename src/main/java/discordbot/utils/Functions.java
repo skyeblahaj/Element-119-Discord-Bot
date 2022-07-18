@@ -198,6 +198,18 @@ public class Functions{
 		
 	}
 	
+	public static class Debug {
+		
+		public static <T> void printArray(T[] in) {
+			String out = "";
+			for (T t : in) {
+				out += t.toString() + '\t';
+			}
+			System.out.println(out);
+		}
+		
+	}
+	
 	public static class Rendering { //media utilities
 		private Rendering() {}
 		

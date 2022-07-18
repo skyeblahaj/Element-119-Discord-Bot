@@ -39,6 +39,7 @@ import discordbot.core.event.actions.MessageReceivedAction;
 import discordbot.core.exceptions.IllegalMediaException;
 import discordbot.core.exceptions.NotFoundException;
 import discordbot.core.math.Operations;
+import discordbot.core.math.chem.ChemicalFormula;
 import discordbot.core.network.GetRequester;
 import discordbot.core.network.PostRequester;
 import discordbot.core.render.Converter;
@@ -890,6 +891,8 @@ public class CommandRegistry {
 			case "quad" -> operation = Operations.QUADRATIC;
 			case "quadratic" -> operation = Operations.QUADRATIC;
 			case "ax^2+bx+c" -> operation = Operations.QUADRATIC;
+			case "chem" -> operation = Operations.CHEMISTRY;
+			case "chemistry" -> operation = Operations.CHEMISTRY;
 			case "f-c" -> {operation = Operations.OTHER; Operations.OTHER.setParametersNeeded(1);}
 			case "c-f" -> {operation = Operations.OTHER; Operations.OTHER.setParametersNeeded(1);}
 			default -> {
@@ -898,19 +901,25 @@ public class CommandRegistry {
 				return;
 			}
 		}
-		
-		if (args.length < operation.paramsNeeded() + 2) { //add two to bypass command request and operation request
+		int offset = operation.paramsNeeded();
+		int extOffset = operation.extraParamsNeeded();
+		if (args.length < offset + 2) { //add two to bypass command request and operation request
 			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Specify integers."));
+					Functions.Messages.errorEmbed(event.getMessage(), "Specify more parameters."));
 			return;
 		}
 		
-		double[] params = new double[args.length - 2];
-		for (int i = 0; i < args.length - 2; i++) {
-			params[i] = Double.parseDouble(args[i + 2]);
+		String[] params = new String[args.length - 2 - extOffset];
+		for (int i = 0; i < args.length - 2 - extOffset; i++) {
+			params[i] = args[i + 2 + extOffset];
 		}
 		
-		double output = params[0];
+		double output;
+		if (operation == Operations.CHEMISTRY) {
+			output = 0;
+		} else {
+			output = Double.parseDouble(params[0]);
+		}
 		String answer = null;
 		
 		Function<Double, String> toAnswer = (val) -> {
@@ -921,51 +930,59 @@ public class CommandRegistry {
 		
 			case ADD -> {
 				for (int i = 1; i < params.length; i++) {
-					output += params[i];
+					output += Double.parseDouble(params[i]);
 				}
 			}
 			
 			case SUBTRACT -> {
 				for (int i = 1; i < params.length; i++) {
-					output -= params[i];
+					output -= Double.parseDouble(params[i]);
 				}
 			}
 			
 			case MULTIPLY -> {
 				for (int i = 1; i < params.length; i++) {
-					output *= params[i];
+					output *= Double.parseDouble(params[i]);
 				}
 			}
 			
 			case DIVIDE -> {
 				for (int i = 1; i < params.length; i++) {
-					output /= params[i];
+					output /= Double.parseDouble(params[i]);
 				}
 			}
 			
 			case POWER -> {
 				for (int i = 1; i < params.length; i++) {
-					output = Operations.EXPONENTIAL.carry(output, params[i]);
+					output = Operations.EXPONENTIAL.carry(output, Double.parseDouble(params[i]));
 				}
 			}
 			
 			case LOG -> {
 				for (int i = 1; i < params.length; i++) {
-					output = Operations.BASE_LOG.carry(params[i], output);
+					output = Operations.BASE_LOG.carry(Double.parseDouble(params[i]), output);
 				}
 			}
 			
 			case QUADRATIC -> {
-				double[] xVals = Operations.QUADRATICS.apply(params[0], params[1], params[2]);
+				double[] xVals = Operations.QUADRATICS.apply(Double.parseDouble(params[0]), Double.parseDouble(params[1]), Double.parseDouble(params[2]));
 				toAnswer = (val) -> {
 					return xVals[0] + ", " + xVals[1];
 				};
 			}
 			
+			case CHEMISTRY -> {
+				switch (args[2].toLowerCase()) {
+					case "molarmass" -> {
+						output = new ChemicalFormula(args[3]).molarMass();
+					}
+				}
+			}
+			
 			case OTHER -> {
 				switch (args[1].toLowerCase()) {
-					case "f-c" -> output = Operations.FAHRENHEIT_TO_CELSIUS.carry(params[0]);
-					case "c-f" -> output = Operations.CELSIUS_TO_FAHRENHEIT.carry(params[0]);
+					case "f-c" -> output = Operations.FAHRENHEIT_TO_CELSIUS.carry(Double.parseDouble(params[0]));
+					case "c-f" -> output = Operations.CELSIUS_TO_FAHRENHEIT.carry(Double.parseDouble(params[0]));
 					default -> {
 						throw new NotFoundException("operation not found and not caught by filter");
 					}
@@ -1249,16 +1266,19 @@ public class CommandRegistry {
 	
 	public static final PermissionCommand CHANGE_NICKNAME = registerPermission("nickname", event -> {
 		String[] args = Functions.Messages.multiArgs(event.getMessage());
-		
+		String input = "";
 		if (args.length < 2) {
 			event.getGuild().getSelfMember().modifyNickname("").complete();
 		} else {
-			event.getGuild().getSelfMember().modifyNickname(args[1]).complete();
+			for (int i = 1; i < args.length; i++) {
+				input += " " + args[i];
+			}
+			event.getGuild().getSelfMember().modifyNickname(input.trim()).complete();
 		}
 		
 		Functions.Messages.sendEmbeded(event.getChannel(), 
 				Functions.Messages.buildEmbed("Change Nickname", new Color(0x00ff00), 
-						new Field("Success", "Nickname changed to " + (args.length < 2 ? event.getJDA().getSelfUser().getName() : args[1]), false)));
+						new Field("Success", "Nickname changed to " + (args.length < 2 ? event.getJDA().getSelfUser().getName() : input.trim()), false)));
 		
 	}, "Changes the bot's nickname. If no nickname is specified, it will change to the bot's username.", Permission.NICKNAME_MANAGE);
 	
@@ -1266,17 +1286,17 @@ public class CommandRegistry {
 	
 	@RegistryBus
 	public static void registerAll() {
-		for (Command cmd : COMMANDS) {
-			cmd.register();
-			System.out.println(cmd.getName() + " command is registered.");
-		}
-		for (OwnerCommand cmd : OWNER_COMMANDS) {
-			cmd.register();
-			System.out.println(cmd.getName() + " owner command is registered.");
-		}
-		for (PermissionCommand cmd : PERMISSION_COMMANDS) {
-			cmd.register();
-			System.out.println(cmd.getName() + " permission command is registered.");
+		for (List<? extends Command> cmds : ALL_COMMANDS) {
+			for (Command cmd : cmds) {
+				cmd.register();
+				if (cmd instanceof OwnerCommand) {
+					System.out.println(cmd.getName() + " command is registered.");
+				} else if (cmd instanceof PermissionCommand) {
+					System.out.println(cmd.getName() + " permission command is registered.");
+				} else {
+					System.out.println(cmd.getName() + " command is registered.");
+				}
+			}
 		}
 	}
 }

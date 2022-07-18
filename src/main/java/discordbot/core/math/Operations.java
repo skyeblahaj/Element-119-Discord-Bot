@@ -7,19 +7,28 @@ import discordbot.utils.function.TriFunction;
 
 public enum Operations {
 
-	ADD(2), SUBTRACT(2), MULTIPLY(2), DIVIDE(2), POWER(2), LOG(2), OTHER(0, true), QUADRATIC(3);
+	ADD(2), SUBTRACT(2), MULTIPLY(2), DIVIDE(2), POWER(2), LOG(2), OTHER(0, true), QUADRATIC(3), CHEMISTRY(2, 1);
 	
 	private int paramsReq;
+	private final int extraParams;
 	private final boolean canChange;
 	
 	Operations(int req) {
 		this.paramsReq = req;
 		this.canChange = false;
+		this.extraParams = 0;
 	}
 	
 	Operations(int req, boolean override) {
 		this.paramsReq = req;
 		this.canChange = override;
+		this.extraParams = 0;
+	}
+	
+	Operations(int req, int ext) {
+		this.canChange = false;
+		this.paramsReq = req;
+		this.extraParams = ext;
 	}
 	
 	public void setParametersNeeded(int i) {
@@ -29,6 +38,10 @@ public enum Operations {
 	
 	public int paramsNeeded() {
 		return this.paramsReq;
+	}
+	
+	public int extraParamsNeeded() {
+		return this.extraParams;
 	}
 	
 	public static final Carrier<Double> FAHRENHEIT_TO_CELSIUS = in -> {
