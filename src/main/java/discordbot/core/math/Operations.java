@@ -2,10 +2,12 @@ package discordbot.core.math;
 
 import discordbot.utils.function.BiCarrier;
 import discordbot.utils.function.Carrier;
+import discordbot.utils.function.TriCarrier;
+import discordbot.utils.function.TriFunction;
 
 public enum Operations {
 
-	ADD(2), SUBTRACT(2), MULTIPLY(2), DIVIDE(2), POWER(2), LOG(2), OTHER(0, true);
+	ADD(2), SUBTRACT(2), MULTIPLY(2), DIVIDE(2), POWER(2), LOG(2), OTHER(0, true), QUADRATIC(3);
 	
 	private int paramsReq;
 	private final boolean canChange;
@@ -44,4 +46,19 @@ public enum Operations {
 	public static final BiCarrier<Double> BASE_LOG = (in1, in2) -> {
 		return Math.log(in1) / Math.log(in2);
 	};
+
+	private static final TriCarrier<Double> QUAD_POS = (a, b, c) -> {
+		return (-b + (Math.sqrt((b * b) - (4 * a * c)))) / 2 * a;
+	};
+	
+	private static final TriCarrier<Double> QUAD_NEG = (a, b, c) -> {
+		return (-b - (Math.sqrt((b * b) - (4 * a * c)))) / 2 * a;
+	};
+	
+	public static final TriFunction<double[], Double, Double, Double> QUADRATICS = (a, b, c) -> {
+		double x1 = QUAD_POS.carry(a, b, c);
+		double x2 = QUAD_NEG.carry(a, b, c);
+		return new double[] {x1, x2};
+	};
+	
 }

@@ -12,8 +12,8 @@ public class Logging extends BasicEventRegistry {
 
 	@Override
 	public void onMessageReceived(MessageReceivedEvent event) {
-		System.out.println(event.getAuthor().toString() + "\n---\n" +
-						event.getChannel().toString() + "\n---\n" +
+		System.out.println("\nMember: " + event.getAuthor().toString() + "\n---\nIn channel: " +
+						event.getChannel().toString() + " --- In Server: " + event.getGuild().toString() + "\n---\n" +
 						event.getMessage().getContentRaw() + '\n');
 		
 		//command exceptions

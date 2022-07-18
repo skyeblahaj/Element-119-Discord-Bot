@@ -25,7 +25,7 @@ public class GuildController {
 			if (new File("src/main/resources/custom_interface/" + g.getId() + ".json").exists()) {
 				try {
 					new CustomGuildFeatures(g).register();
-					System.out.println(g.getName() + " custom features registered.");
+					System.out.println(g.toString() + " custom features registered.");
 				} catch (IOException e) {e.printStackTrace();}
 			}
 		}

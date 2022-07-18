@@ -11,6 +11,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Function;
 
 import javax.imageio.ImageIO;
 import javax.json.Json;
@@ -400,8 +401,7 @@ public class CommandRegistry {
 			AudioManager aManager = event.getGuild().getAudioManager();
 			if (aManager.isConnected()) {
 				aManager.closeAudioConnection();
-				manager.getScheduler().getPlayer().stopTrack();
-				manager.getScheduler().getQueue().clear();
+				manager.kill();
 			}
 			else aManager.openAudioConnection(event.getMember().getVoiceState().getChannel());
 		} else Functions.Messages.sendEmbeded(event.getChannel(),
@@ -413,8 +413,7 @@ public class CommandRegistry {
 			final GuildMusicManager manager = PlayerManager.getInstance().getMusicManager(event.getGuild());
 			AudioManager audio = event.getGuild().getAudioManager();
 			if (audio.isConnected()) {
-				manager.getScheduler().getPlayer().stopTrack();
-				manager.getScheduler().getQueue().clear();
+				manager.kill();
 			} else {
 				Functions.Messages.sendEmbeded(event.getChannel(),
 						Functions.Messages.errorEmbed(event.getMessage(), "Bot is not connected to an audio channel."));
@@ -888,6 +887,9 @@ public class CommandRegistry {
 			case "log" -> operation = Operations.LOG;
 			case "logarithm" -> operation = Operations.LOG;
 			case "logarithmic" -> operation = Operations.LOG;
+			case "quad" -> operation = Operations.QUADRATIC;
+			case "quadratic" -> operation = Operations.QUADRATIC;
+			case "ax^2+bx+c" -> operation = Operations.QUADRATIC;
 			case "f-c" -> {operation = Operations.OTHER; Operations.OTHER.setParametersNeeded(1);}
 			case "c-f" -> {operation = Operations.OTHER; Operations.OTHER.setParametersNeeded(1);}
 			default -> {
@@ -909,6 +911,11 @@ public class CommandRegistry {
 		}
 		
 		double output = params[0];
+		String answer = null;
+		
+		Function<Double, String> toAnswer = (val) -> {
+			return val + "";
+		};
 		
 		switch (operation) {
 		
@@ -948,18 +955,29 @@ public class CommandRegistry {
 				}
 			}
 			
+			case QUADRATIC -> {
+				double[] xVals = Operations.QUADRATICS.apply(params[0], params[1], params[2]);
+				toAnswer = (val) -> {
+					return xVals[0] + ", " + xVals[1];
+				};
+			}
+			
 			case OTHER -> {
-				if (args[1].equalsIgnoreCase("f-c")) {
-					output = Operations.FAHRENHEIT_TO_CELSIUS.carry(params[0]);
-				} else if (args[1].equalsIgnoreCase("c-f")) {
-					output = Operations.CELSIUS_TO_FAHRENHEIT.carry(params[0]);
-				} else throw new NotFoundException("operation not found and not caught by filter");
+				switch (args[1].toLowerCase()) {
+					case "f-c" -> output = Operations.FAHRENHEIT_TO_CELSIUS.carry(params[0]);
+					case "c-f" -> output = Operations.CELSIUS_TO_FAHRENHEIT.carry(params[0]);
+					default -> {
+						throw new NotFoundException("operation not found and not caught by filter");
+					}
+				}
 			}
 		}
 		
+		answer = toAnswer.apply(output);
+		
 		Functions.Messages.sendEmbeded(event.getChannel(), 
 				Functions.Messages.buildEmbed("Math", new Color(0x0000ff),
-						new Field("Output:", output + "", false)));
+						new Field("Output:", answer, false)));
 		
 	}, "Basic bitwise math. Specify the operation before the numbers. To specify an operation, use its name, symbol, or abbreviation.\nExample: \"->math log 10 100\" returns 2.");
 	

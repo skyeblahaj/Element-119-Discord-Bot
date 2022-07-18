@@ -71,11 +71,18 @@ public class ManualControl {
 				menu.getContentPane().add(new JPanel().add(new JLabel("Change Nickname")));
 				JTextField newNickname = new JTextField();
 				menu.getContentPane().add(new JPanel().add(newNickname));
-				JButton changeNickname = new JButton("Confirm");
+				JButton changeNickname = new JButton("Confirm New Nickname");
 				changeNickname.addActionListener($1 -> {
 					event.getJDA().getGuildById(server.getText()).getSelfMember().modifyNickname(newNickname.getText()).complete();
 				});
 				menu.getContentPane().add(new JPanel().add(changeNickname));
+				
+				menu.getContentPane().add(new JPanel().add(new JLabel("Leave Server")));
+				JButton leave = new JButton("Confirm Leave Server");
+				leave.addActionListener(e -> {
+					event.getJDA().getGuildById(server.getText()).leave().complete();
+				});
+				menu.getContentPane().add(new JPanel().add(leave));
 				
 				menu.setVisible(true);
 			});

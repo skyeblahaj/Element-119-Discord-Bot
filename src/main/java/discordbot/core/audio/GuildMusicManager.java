@@ -27,4 +27,10 @@ public class GuildMusicManager { //encap class
 	public AudioPlayer getPlayer() {
 		return this.player;
 	}
+	
+	public void kill() {
+		this.scheduler.getPlayer().stopTrack();
+		this.scheduler.getQueue().clear();
+	}
+	
 }
