@@ -226,42 +226,70 @@ public class CommandRegistry {
 				if (args.length < 3) Functions.Messages.sendEmbeded(event.getChannel(),
 						Functions.Messages.errorEmbed(event.getMessage(), "Not enough parameters."));
 				else {
-					PostRequester httpTool = new PostRequester("http://api.15.ai/app/getAudioFile5");
 					
-					//exceptions
-					args[1] = (String) Functions.Utils.capitalize(args[1]);
-					if (args[1].equalsIgnoreCase("spongebob")) args[1] = "SpongeBob SquarePants";
-					//
+					boolean website15AI;
+					
+					//find a voice//
+					switch (args[1].toLowerCase()) {
+						case "spongebob" -> {args[1] = "SpongeBob SquarePants"; website15AI = true;}
+						case "scout" -> {args[1] = "Scout"; website15AI = true;}
+						case "soldier" -> {args[1] = "Soldier"; website15AI = true;}
+						case "pyro" -> {args[1] = "Pyro"; website15AI = true;}
+						case "demoman" -> {args[1] = "Demoman"; website15AI = true;}
+						case "heavy" -> {args[1] = "Heavy"; website15AI = true;}
+						case "engineer" -> {args[1] = "Engineer"; website15AI = true;}
+						case "medic" -> {args[1] = "Medic"; website15AI = true;}
+						case "sniper" -> {args[1] = "Sniper"; website15AI = true;}
+						case "spy" -> {args[1] = "Spy"; website15AI = true;}
+						default -> {
+							website15AI = false;
+							Functions.Messages.sendEmbeded(event.getChannel(),
+									Functions.Messages.errorEmbed(event.getMessage(), "Cannot find voice."));
+							return;
+						}
+					}
+					////////////////
 					
 					String input = "";
 					for (int i = 2; i < args.length; i++) {
 						input += args[i];
 					}
 					
-					CloseableHttpResponse resp = httpTool.post(String.format("{\"character\":\"%s\",\"emotion\":\"Contextual\",\"text\":\"%s\"}", args[1], input), 
-							new BasicHeader("accept", "application/json"),
-							new BasicHeader("content-type", "application/json"));
-					JsonObject obj = Functions.Network.getJSON(resp);
-					httpTool.close();
-					
-				    File rawFile = new File("src/main/resources/cache/ttsRaw.wav");
-				    File bit16 = new File("src/main/resources/cache/tts16Bit.wav");
-				    String wavFile = "https://cdn.15.ai/audio/" + obj.getJsonArray("wavNames").getString(0);
-				    FileUtils.copyURLToFile(new URL(wavFile), rawFile);
-				    
-				    AudioFormat format = new AudioFormat(44100, 16, 1, true, true);
-				    Converter convertTool = new Converter(rawFile);
-				    
-				    convertTool.convert(AudioTypes.WAV, format, bit16);
-					
-					Functions.Messages.sendFileReply(event.getMessage(), bit16);
-					
-					// play in vc
-					
-					if (event.getMember().getVoiceState().inAudioChannel()) {
-						AudioManager manager = event.getGuild().getAudioManager();
-						if (!manager.isConnected()) manager.openAudioConnection(event.getMember().getVoiceState().getChannel());
-						PlayerManager.getInstance().load_play(event, bit16.getPath());
+					if (website15AI) {
+						//15.AI
+						PostRequester httpTool = new PostRequester("http://api.15.ai/app/getAudioFile5");
+						
+						CloseableHttpResponse resp = httpTool.post(String.format("{\"character\":\"%s\",\"emotion\":\"Contextual\",\"text\":\"%s\"}", args[1], input), 
+								new BasicHeader("accept", "application/json"),
+								new BasicHeader("content-type", "application/json"));
+						JsonObject obj = Functions.Network.getJSON(resp);
+						httpTool.close();
+						
+					    File rawFile = new File("src/main/resources/cache/ttsRaw.wav");
+					    File bit16 = new File("src/main/resources/cache/tts16Bit.wav");
+					    String wavFile = "https://cdn.15.ai/audio/" + obj.getJsonArray("wavNames").getString(0);
+					    FileUtils.copyURLToFile(new URL(wavFile), rawFile);
+					    
+					    AudioFormat format = new AudioFormat(44100, 16, 1, true, true);
+					    Converter convertTool = new Converter(rawFile);
+					    
+					    convertTool.convert(AudioTypes.WAV, format, bit16);
+						
+						Functions.Messages.sendFileReply(event.getMessage(), bit16);
+						
+						// play in vc
+						
+						if (event.getMember().getVoiceState().inAudioChannel()) {
+							AudioManager manager = event.getGuild().getAudioManager();
+							if (!manager.isConnected()) manager.openAudioConnection(event.getMember().getVoiceState().getChannel());
+							PlayerManager.getInstance().load_play(event, bit16.getPath());
+						}
+					} else {
+						//UBERDUCK.AI
+						
+						
+						//PostRequester httpTool = new PostRequester("https://app.uberduck.ai/speak#mode=tts-basic&voice=" + args[1]);
+						
 					}
 				}
 			} catch (Exception e) {}
@@ -353,10 +381,22 @@ public class CommandRegistry {
 							Functions.Messages.errorEmbed(event.getMessage(), "Could not retrieve song via the Spotify API."));
 					}
 				} else {
-					Functions.Messages.sendEmbeded(event.getChannel(),
-							Functions.Messages.errorEmbed(event.getMessage(), "URL or file cannot be retrieved."));
+					String input = "";
+					for (int i = 1; i < args.length; i++) {
+						input += " " + args[i];
 					}
-				} catch (IllegalArgumentException e) {
+					YouTube yt = Functions.OAuth.youtubeInstance();
+					List<SearchResult> results = yt.search().list("id, snippet").setQ(input.trim()).setFields("items(id/kind,id/videoId,snippet/title,snippet/thumbnails/default/url)").execute().getItems();
+					if (results.isEmpty()) {
+						Functions.Messages.sendEmbeded(event.getChannel(),
+								Functions.Messages.errorEmbed(event.getMessage(), "Can not find video or audio."));
+						return;
+					}
+					String vidID = results.get(0).getId().getVideoId();
+					PlayerManager.getInstance().load_play(event, "https://www.youtube.com/watch?v=" + vidID);
+					
+				}
+			} catch (IllegalArgumentException e) {
 					Functions.Messages.sendEmbeded(event.getChannel(),
 						Functions.Messages.errorEmbed(event.getMessage(), "User is not connected to a voice channel."));
 			} catch (IOException e) {}
@@ -893,8 +933,15 @@ public class CommandRegistry {
 			case "ax^2+bx+c" -> operation = Operations.QUADRATIC;
 			case "chem" -> operation = Operations.CHEMISTRY;
 			case "chemistry" -> operation = Operations.CHEMISTRY;
+			case "hypot" -> operation = Operations.HYPOTENUSE;
+			case "hypotenuse" -> operation = Operations.HYPOTENUSE;
+			case "pythagorean" -> operation = Operations.HYPOTENUSE;
 			case "f-c" -> {operation = Operations.OTHER; Operations.OTHER.setParametersNeeded(1);}
 			case "c-f" -> {operation = Operations.OTHER; Operations.OTHER.setParametersNeeded(1);}
+			case "c-k" -> {operation = Operations.OTHER; Operations.OTHER.setParametersNeeded(1);}
+			case "f-k" -> {operation = Operations.OTHER; Operations.OTHER.setParametersNeeded(1);}
+			case "k-c" -> {operation = Operations.OTHER; Operations.OTHER.setParametersNeeded(1);}
+			case "k-f" -> {operation = Operations.OTHER; Operations.OTHER.setParametersNeeded(1);}
 			default -> {
 				Functions.Messages.sendEmbeded(event.getChannel(), 
 						Functions.Messages.errorEmbed(event.getMessage(), "Math operation not found. Do \"->cmdhelp math\" for all operations."));
@@ -974,16 +1021,26 @@ public class CommandRegistry {
 			case CHEMISTRY -> {
 				switch (args[2].toLowerCase()) {
 					case "molarmass" -> {
-						output = new ChemicalFormula(args[3]).molarMass();
+						output = new ChemicalFormula(args[3]).molarMass(); //wip
 					}
 				}
+			}
+			
+			case HYPOTENUSE -> {
+				output = Operations.HYPOT.carry(Double.parseDouble(params[0]), Double.parseDouble(params[1]));
 			}
 			
 			case OTHER -> {
 				switch (args[1].toLowerCase()) {
 					case "f-c" -> output = Operations.FAHRENHEIT_TO_CELSIUS.carry(Double.parseDouble(params[0]));
 					case "c-f" -> output = Operations.CELSIUS_TO_FAHRENHEIT.carry(Double.parseDouble(params[0]));
+					case "c-k" -> output = Operations.CELSIUS_TO_KELVIN.carry(Double.parseDouble(params[0]));
+					case "f-k" -> output = Operations.FAHRENHEIT_TO_KELVIN.carry(Double.parseDouble(params[0]));
+					case "k-c" -> output = Operations.KELVIN_TO_CELSIUS.carry(Double.parseDouble(params[0]));
+					case "k-f" -> output = Operations.KELVIN_TO_FAHRENHEIT.carry(Double.parseDouble(params[0]));
 					default -> {
+						Functions.Messages.sendEmbeded(event.getChannel(), 
+								Functions.Messages.errorEmbed(event.getMessage(), "Internal Server Error. Please report this issue."));
 						throw new NotFoundException("operation not found and not caught by filter");
 					}
 				}

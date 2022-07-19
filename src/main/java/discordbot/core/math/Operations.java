@@ -7,7 +7,7 @@ import discordbot.utils.function.TriFunction;
 
 public enum Operations {
 
-	ADD(2), SUBTRACT(2), MULTIPLY(2), DIVIDE(2), POWER(2), LOG(2), OTHER(0, true), QUADRATIC(3), CHEMISTRY(2, 1);
+	ADD(2), SUBTRACT(2), MULTIPLY(2), DIVIDE(2), POWER(2), LOG(2), OTHER(0, true), QUADRATIC(3), CHEMISTRY(2, 1), HYPOTENUSE(2);
 	
 	private int paramsReq;
 	private final int extraParams;
@@ -52,6 +52,22 @@ public enum Operations {
 		return in * 1.8 + 32;
 	};
 	
+	public static final Carrier<Double> CELSIUS_TO_KELVIN = in -> {
+		return in + 273.15;
+	};
+	
+	public static final Carrier<Double> KELVIN_TO_CELSIUS = in -> {
+		return in - 273.15;
+	};
+	
+	public static final Carrier<Double> FAHRENHEIT_TO_KELVIN = in -> {
+		return CELSIUS_TO_KELVIN.carry(FAHRENHEIT_TO_CELSIUS.carry(in));
+	};
+	
+	public static final Carrier<Double> KELVIN_TO_FAHRENHEIT = in -> {
+		return CELSIUS_TO_FAHRENHEIT.carry(KELVIN_TO_CELSIUS.carry(in));
+	};
+	
 	public static final BiCarrier<Double> EXPONENTIAL = (in1, in2) -> {
 		return Math.pow(in1, in2);
 	};
@@ -72,6 +88,10 @@ public enum Operations {
 		double x1 = QUAD_POS.carry(a, b, c);
 		double x2 = QUAD_NEG.carry(a, b, c);
 		return new double[] {x1, x2};
+	};
+	
+	public static final BiCarrier<Double> HYPOT = (x, y) -> {
+		return Math.hypot(x, y);
 	};
 	
 }
