@@ -35,6 +35,7 @@ import discordbot.Element119;
 import discordbot.core.audio.GuildMusicManager;
 import discordbot.core.audio.PlayerManager;
 import discordbot.core.audio.spotify.LinkConverter;
+import discordbot.core.download.Downloader;
 import discordbot.core.event.actions.MessageReceivedAction;
 import discordbot.core.exceptions.IllegalMediaException;
 import discordbot.core.exceptions.NotFoundException;
@@ -45,11 +46,13 @@ import discordbot.core.network.PostRequester;
 import discordbot.core.render.Converter;
 import discordbot.core.render.Cropper;
 import discordbot.core.render.ImageLayerer;
+import discordbot.core.render.Rotator;
 import discordbot.core.render.Scaler;
 import discordbot.inter_face.custom.CustomGuildFeatures;
 import discordbot.inter_face.custom.GuildController;
 import discordbot.inter_face.debug.ManualControl;
 import discordbot.utils.BusPassenger;
+import discordbot.utils.Debug;
 import discordbot.utils.Functions;
 import discordbot.utils.Info;
 import discordbot.utils.RegistryBus;
@@ -64,11 +67,12 @@ import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.entities.Message.Attachment;
 import net.dv8tion.jda.api.entities.MessageChannel;
 import net.dv8tion.jda.api.entities.MessageEmbed.Field;
+import net.dv8tion.jda.api.exceptions.HierarchyException;
 import net.dv8tion.jda.api.managers.AudioManager;
 import se.michaelthelin.spotify.exceptions.SpotifyWebApiException;
 
 @BusPassenger
-public class CommandRegistry {
+public final class CommandRegistry {
 	
 	private CommandRegistry() {}
 	
@@ -78,10 +82,22 @@ public class CommandRegistry {
 	
 	public static final List<List<? extends Command>> ALL_COMMANDS = List.of(COMMANDS, OWNER_COMMANDS, PERMISSION_COMMANDS);
 	
-	private static Command register(String name, MessageReceivedAction action, String help) {
-		Command cmd = new Command(name, action, help);
+	private static Command register(String name, MessageReceivedAction action, String help, boolean debug) {
+		Command cmd = new Command(name, action, help, debug);
 		COMMANDS.add(cmd);
 		return cmd;
+	}
+	
+	private static Command register(String name, MessageReceivedAction action, boolean debug) {
+		return register(name, action, null, debug);
+	}
+	
+	private static Command register(String name, MessageReceivedAction action, String help) {
+		return register(name, action, help, false);
+	}
+	
+	private static Command register(String name, MessageReceivedAction action) {
+		return register(name, action, null);
 	}
 	
 	private static OwnerCommand registerOwner(String name, MessageReceivedAction action, String help) {
@@ -90,22 +106,26 @@ public class CommandRegistry {
 		return cmd;
 	}
 	
-	private static PermissionCommand registerPermission(String name, MessageReceivedAction action, String help, Permission... perms) {
-		PermissionCommand cmd = new PermissionCommand(name, action, help, perms);
-		PERMISSION_COMMANDS.add(cmd);
-		return cmd;
-	}
-	
-	private static Command register(String name, MessageReceivedAction action) {
-		return register(name, action, null);
-	}
-	
 	private static OwnerCommand registerOwner(String name, MessageReceivedAction action) {
 		return registerOwner(name, action, null);
 	}
 	
+	private static PermissionCommand registerPermission(String name, MessageReceivedAction action, String help, boolean debug, Permission... perms) {
+		PermissionCommand cmd = new PermissionCommand(name, action, help, debug, perms);
+		PERMISSION_COMMANDS.add(cmd);
+		return cmd;
+	}
+	
+	private static PermissionCommand registerPermission(String name, MessageReceivedAction action, String help, Permission... perms) {
+		return registerPermission(name, action, help, false, perms);
+	}
+	
+	private static PermissionCommand registerPermission(String name, MessageReceivedAction action, boolean debug, Permission... perms) {
+		return registerPermission(name, action, null, debug, perms);
+	}
+	
 	private static PermissionCommand registerPermission(String name, MessageReceivedAction action, Permission... perms) {
-		return registerPermission(name, action, null, perms);
+		return registerPermission(name, action, false, perms);
 	}
 	
 //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -136,15 +156,17 @@ public class CommandRegistry {
 				}
 				Functions.Messages.sendEmbeded(event.getChannel(), 
 						Functions.Messages.buildEmbed("Command Help", new Color(0x00ff00),
-								new Field("Notice:", "Needs:\n" + perms, false),
-								new Field((String) Functions.Utils.capitalize(cmd.getName()), cmd.getHelp() == null ? "No help message is provided." : cmd.getHelp(), false)));
+								new Field("Permissions Needed:", perms, false),
+								new Field((String) Functions.Utils.capitalize(cmd.getName()), cmd.getHelp() == null ? "No help message is provided." : cmd.getHelp(), false),
+								cmd.isDebug() ? new Field("Notice:", "Developer Only --- Currently in development.", false) : null));
 			} else if (cmd == null) {
 				Functions.Messages.sendEmbeded(event.getChannel(), 
 						Functions.Messages.errorEmbed(event.getMessage(), "Cannot find requested command."));
 			} else {
 				Functions.Messages.sendEmbeded(event.getChannel(), 
 						Functions.Messages.buildEmbed("Command Help", new Color(0x00ff00),
-								new Field((String) Functions.Utils.capitalize(cmd.getName()), cmd.getHelp() == null ? "No help message is provided." : cmd.getHelp(), false)));
+								new Field((String) Functions.Utils.capitalize(cmd.getName()), cmd.getHelp() == null ? "No help message is provided." : cmd.getHelp(), false),
+								cmd.isDebug() ? new Field("Notice:", "Developer Only --- Currently in development.", false) : null));
 			}
 		}
 	}, "You're already on the help page. Stupid.");
@@ -179,13 +201,13 @@ public class CommandRegistry {
 					for (Permission p : ((PermissionCommand) c).getPerms()) {
 						permsNeeded += " (" + p.getName() + ") ";
 					}
-					list += "\nRequires:" + permsNeeded + c.getName();
+					list += "\nRequires:" + permsNeeded + c.getName() + (c.isDebug() ? " --- WIP (temporarily dev only)" : "");
 				} else {
-					list += "\n" + c.getName();
+					list += "\n" + c.getName() + (c.isDebug() ? " --- WIP (temporarily dev only)" : "");
 				}
 			}
 		}
-		Functions.Messages.sendMessage(event.getChannel(), "```--Command List--" + list + "```");
+		Functions.Messages.sendMessage(event.getChannel(), "```--Command List--" + list + "\n--End Of Command List--```");
 	}, "Returns all registered commands. Note that this command is automated as development progress continues so some commands may not function correctly.");
 	
 	public static final Command AVATAR = register("avatar", event -> {
@@ -1208,6 +1230,49 @@ public class CommandRegistry {
 						).setThumbnail(event.getJDA().getSelfUser().getEffectiveAvatarUrl()));
 	}, "API Instructions.");
 	
+	@Debug
+	public static final Command ROTATE = register("rotate", event -> {
+		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		if (args.length < 2) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Enter an integer value (as degrees)."));
+			return;
+		}
+		if (event.getMessage().getAttachments().size() <= 0) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Include an attachment."));
+			return;
+		}
+		Attachment inputFile = event.getMessage().getAttachments().get(0);
+		if (!(MediaType.findFormat(inputFile.getFileExtension()) instanceof ImageTypes)) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Attachment must be an image."));
+			return;
+		}
+		File inputLoc = new File("src/main/resources/cache/rotateIn." + inputFile.getFileExtension());
+		File outputLoc = new File("src/main/resources/cache/rotateOut.png");
+		try {
+			FileUtils.copyURLToFile(new URL(inputFile.getProxyUrl()), inputLoc);
+			Rotator renderTool = new Rotator(ImageIO.read(inputLoc));
+			ImageIO.write(renderTool.rotate(Integer.parseInt(args[1])), "png", outputLoc);
+		} catch (IOException e) {}
+		
+		Functions.Messages.sendFileReply(event.getMessage(), outputLoc);
+	}, true);
+	
+	@Debug
+	public static final Command DOWNLOAD = register("download", event -> {
+		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		if (args.length < 2) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Include a youtube URL."));
+			return;
+		}
+		try {
+			Downloader.getInstance().download(args[1], "src/main/resources/cache/ytdownload");
+		} catch (IOException e) {e.printStackTrace();}
+	}, true);
+	
 //////////////////////////////////////////////////////////////////////////////////////////////////
 //OWNER COMMANDS
 
@@ -1338,6 +1403,47 @@ public class CommandRegistry {
 						new Field("Success", "Nickname changed to " + (args.length < 2 ? event.getJDA().getSelfUser().getName() : input.trim()), false)));
 		
 	}, "Changes the bot's nickname. If no nickname is specified, it will change to the bot's username.", Permission.NICKNAME_MANAGE);
+	
+	public static final PermissionCommand KICK_MEMBER = registerPermission("kick", event -> {
+		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		if (args.length < 2) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Mention a member of this server."));
+			return;
+		}
+		if (!Functions.Messages.isPinging(args[1])) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Member must be mentioned."));
+			return;
+		}
+		String reason = "";
+		for (int i = 2; i < args.length; i++) {
+			reason += " " + args[i];
+		}
+		List<Member> mentioned = event.getMessage().getMentionedMembers();
+		if (mentioned.size() <= 0) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Mention does not include a member."));
+			return;
+		}
+		Member memberToKick = mentioned.get(0);
+		try {
+			if (reason.equals("")) {
+				memberToKick.kick().complete();
+			} else {
+				memberToKick.kick(reason.trim()).complete();
+			}	
+		} catch (HierarchyException e) {
+			Functions.Messages.sendEmbeded(event.getChannel(), 
+					Functions.Messages.errorEmbed(event.getMessage(), "Cannot kick member with equal or higher role hierarchy.", e));
+			return;
+		}
+		Functions.Messages.sendEmbeded(event.getChannel(), 
+				Functions.Messages.buildEmbed("Member Kick", new Color(0x00ff00), 
+						new Field("Success", "Kicked member: **" + memberToKick.getEffectiveName() + "**", false),
+						!reason.equals("") ? new Field("With Reason:", reason, false) : null));
+		
+	}, "Kicks a member from the server.", Permission.KICK_MEMBERS);
 	
 //////////////////////////////////////////////////////////////////////////////////////////////////
 	

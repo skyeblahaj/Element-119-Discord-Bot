@@ -13,12 +13,15 @@ public class PermissionCommand extends Command {
 	private Permission[] perms;
 	
 	public PermissionCommand(String name, MessageReceivedAction action, Permission... perms) {
-		super(name, action);
-		this.perms = perms;
+		this(name, action, null, perms);
 	}
 	
 	public PermissionCommand(String name, MessageReceivedAction action, String help, Permission... perms) {
-		super(name, action, help);
+		this(name, action, help, false, perms);
+	}
+	
+	public PermissionCommand(String name, MessageReceivedAction action, String help, boolean debug, Permission...perms) {
+		super(name, action, help, debug);
 		this.perms = perms;
 	}
 	
@@ -36,10 +39,14 @@ public class PermissionCommand extends Command {
 					}
 				}
 			}
-			if (ManualControl.overrideToggle && event.getAuthor().getId().equals(Info.OWNER_ID)) { //debug in servers where i miss perms (vulnerable to exploiting if the bot has permissions, so owners will need to trust me until bot is out of heavy development)
+			boolean owner = event.getAuthor().getId().equals(Info.OWNER_ID);
+			if (ManualControl.overrideToggle && owner) { //debug in servers where i miss perms (vulnerable to exploiting if the bot has permissions, so owners will need to trust me until bot is out of heavy development)
 				isAllowed = true;
 			}
-			if (msgBool && isAllowed && ManualControl.commandToggle) this.action.action(event);
+			if (msgBool && isAllowed && ManualControl.commandToggle && !this.debug) this.action.action(event);
+			else if (msgBool && this.debug && owner) {
+				this.action.action(event);
+			}
 			else if (msgBool) {
 				Functions.Messages.sendEmbeded(event.getChannel(),
 						Functions.Messages.errorEmbed(event.getMessage(), "User does not have access to use this command."));

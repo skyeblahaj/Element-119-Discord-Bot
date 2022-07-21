@@ -12,12 +12,18 @@ public class Command extends BasicEventRegistry {
 	
 	protected String name;
 	protected String help;
+	protected boolean debug;
 	protected MessageReceivedAction action;
 	
-	public Command(String name, MessageReceivedAction action, String help) {
+	public Command(String name, MessageReceivedAction action, String help, boolean debug) {
 		this.name = name;
 		this.action = action;
 		this.help = help;
+		this.debug = debug;
+	}
+	
+	public Command(String name, MessageReceivedAction action, String help) {
+		this(name, action, help, false);
 	}
 	
 	public Command(String name, MessageReceivedAction action) {
@@ -27,8 +33,13 @@ public class Command extends BasicEventRegistry {
 	@Override
 	public void onMessageReceived(MessageReceivedEvent event) {
 		if (event.getAuthor().isBot()) return;
+		boolean msgBool = Functions.Utils.startsWithIgnoreCase(event.getMessage().getContentRaw(), Info.PREFIX + this.name) && ManualControl.commandToggle;
 		try {
-			if (Functions.Utils.startsWithIgnoreCase(event.getMessage().getContentRaw(), Info.PREFIX + this.name) && ManualControl.commandToggle) this.action.action(event);
+			if (msgBool && !this.debug) {
+				this.action.action(event);
+			} else if (msgBool && this.debug && event.getAuthor().getId().equals(Info.OWNER_ID)) {
+				this.action.action(event);
+			}
 		} catch (InsufficientPermissionException e) {
 			System.err.println("Bot does not have permission to send messages in channel \"" + event.getChannel().toString() + "\"");
 		}
@@ -40,5 +51,9 @@ public class Command extends BasicEventRegistry {
 	
 	public String getHelp() {
 		return this.help;
+	}
+	
+	public boolean isDebug() {
+		return this.debug;
 	}
 }

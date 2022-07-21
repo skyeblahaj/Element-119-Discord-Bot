@@ -196,6 +196,10 @@ public class Functions{
 			return building;
 		}
 		
+		public static EmbedBuilder errorEmbed(Message m, String msg, Exception e) {
+			return errorEmbed(m, msg).addField("Stacktrace:", e.toString(), false);
+		}
+		
 	}
 	
 	public static class Debug {
