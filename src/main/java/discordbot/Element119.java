@@ -21,7 +21,7 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Activity;
 
-public class Element119 {
+public final class Element119 {
 	
 	public static JDA mainJDA;
 	

@@ -1,4 +1,4 @@
-package discordbot.inter_face.custom;
+package discordbot.inter_face.custom.server;
 
 import java.io.File;
 import java.io.IOException;
@@ -13,7 +13,7 @@ import discordbot.utils.RegistryBus;
 import net.dv8tion.jda.api.entities.Guild;
 
 @BusPassenger
-public class GuildController {
+public final class GuildController {
 
 	public static final Map<Guild, File> REGISTERED_SERVERS = new HashMap<>();
 	public static final Map<Guild, List<? extends BasicEventRegistry>> CUSTOM_GUILD_COMMANDS = new HashMap<>();

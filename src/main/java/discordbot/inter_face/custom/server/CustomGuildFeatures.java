@@ -1,4 +1,4 @@
-package discordbot.inter_face.custom;
+package discordbot.inter_face.custom.server;
 
 import java.io.File;
 import java.io.FileInputStream;

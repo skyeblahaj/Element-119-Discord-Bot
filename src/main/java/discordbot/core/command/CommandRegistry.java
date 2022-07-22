@@ -48,8 +48,8 @@ import discordbot.core.render.Cropper;
 import discordbot.core.render.ImageLayerer;
 import discordbot.core.render.Rotator;
 import discordbot.core.render.Scaler;
-import discordbot.inter_face.custom.CustomGuildFeatures;
-import discordbot.inter_face.custom.GuildController;
+import discordbot.inter_face.custom.server.CustomGuildFeatures;
+import discordbot.inter_face.custom.server.GuildController;
 import discordbot.inter_face.debug.ManualControl;
 import discordbot.utils.BusPassenger;
 import discordbot.utils.Debug;
@@ -485,6 +485,7 @@ public final class CommandRegistry {
 				Functions.Messages.errorEmbed(event.getMessage(), "User is not in a voice channel."));
 	}, "Stops the current track and clears the queue.");
 	
+	@Debug
 	public static final Command CAPTION = register("caption", event -> {
 		String[] args = Functions.Messages.multiArgs(event.getMessage());
 		if (event.getMessage().getAttachments().size() <= 0) {
@@ -515,7 +516,7 @@ public final class CommandRegistry {
 			
 			Functions.Messages.sendFile(event.getChannel(), output);
 		}
-	});
+	}, true);
 	
 	public static final Command MC_SERVER = register("mc", event -> {
 		String[] args = Functions.Messages.multiArgs(event.getMessage());
