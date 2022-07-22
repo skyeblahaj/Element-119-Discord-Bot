@@ -1,5 +1,21 @@
 package discordbot.core.command;
 
+import static discordbot.utils.Functions.Messages.buildEmbed;
+import static discordbot.utils.Functions.Messages.errorEmbed;
+import static discordbot.utils.Functions.Messages.isPinging;
+import static discordbot.utils.Functions.Messages.multiArgs;
+import static discordbot.utils.Functions.Messages.sendEmbeded;
+import static discordbot.utils.Functions.Messages.sendFile;
+import static discordbot.utils.Functions.Messages.sendFileReply;
+import static discordbot.utils.Functions.Messages.sendMessage;
+import static discordbot.utils.Functions.Network.getJSON;
+import static discordbot.utils.Functions.OAuth.youtubeInstance;
+import static discordbot.utils.Functions.Rendering.findColor;
+import static discordbot.utils.Functions.Rendering.findFont;
+import static discordbot.utils.Functions.Rendering.resizeCanvas;
+import static discordbot.utils.Functions.Utils.capitalize;
+import static discordbot.utils.Functions.Utils.writeToFile;
+
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics2D;
@@ -17,6 +33,7 @@ import javax.imageio.ImageIO;
 import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
+import javax.json.JsonString;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.UnsupportedAudioFileException;
 
@@ -50,6 +67,8 @@ import discordbot.core.render.Rotator;
 import discordbot.core.render.Scaler;
 import discordbot.inter_face.custom.server.CustomGuildFeatures;
 import discordbot.inter_face.custom.server.GuildController;
+import discordbot.inter_face.custom.user.CustomUserFeatures;
+import discordbot.inter_face.custom.user.UserController;
 import discordbot.inter_face.debug.ManualControl;
 import discordbot.utils.BusPassenger;
 import discordbot.utils.Debug;
@@ -131,10 +150,10 @@ public final class CommandRegistry {
 //////////////////////////////////////////////////////////////////////////////////////////////////
 //CASUAL COMMANDS
 	public static final Command CMD_HELP = register("cmdhelp", event -> {
-		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		String[] args = multiArgs(event.getMessage());
 		if (args.length < 2) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Include the string of another command."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Include the string of another command."));
 		} else {
 			Command cmd = null;
 			for (List<? extends Command> l : ALL_COMMANDS) {
@@ -145,35 +164,35 @@ public final class CommandRegistry {
 				}
 			}
 			if (cmd instanceof OwnerCommand) {
-				Functions.Messages.sendEmbeded(event.getChannel(), 
-						Functions.Messages.buildEmbed("Command Help", new Color(0x00ff00),
+				sendEmbeded(event.getChannel(), 
+						buildEmbed("Command Help", new Color(0x00ff00),
 								new Field("Notice:", "Developer Only", false),
-								new Field((String) Functions.Utils.capitalize(cmd.getName()), cmd.getHelp() == null ? "No help message is provided." : cmd.getHelp(), false)));
+								new Field((String) capitalize(cmd.getName()), cmd.getHelp() == null ? "No help message is provided." : cmd.getHelp(), false)));
 			} else if (cmd instanceof PermissionCommand) {
 				String perms = "";
 				for (Permission p : ((PermissionCommand) cmd).getPerms()) {
 					perms += p.getName() + "\n";
 				}
-				Functions.Messages.sendEmbeded(event.getChannel(), 
-						Functions.Messages.buildEmbed("Command Help", new Color(0x00ff00),
+				sendEmbeded(event.getChannel(), 
+						buildEmbed("Command Help", new Color(0x00ff00),
 								new Field("Permissions Needed:", perms, false),
-								new Field((String) Functions.Utils.capitalize(cmd.getName()), cmd.getHelp() == null ? "No help message is provided." : cmd.getHelp(), false),
+								new Field((String) capitalize(cmd.getName()), cmd.getHelp() == null ? "No help message is provided." : cmd.getHelp(), false),
 								cmd.isDebug() ? new Field("Notice:", "Developer Only --- Currently in development.", false) : null));
 			} else if (cmd == null) {
-				Functions.Messages.sendEmbeded(event.getChannel(), 
-						Functions.Messages.errorEmbed(event.getMessage(), "Cannot find requested command."));
+				sendEmbeded(event.getChannel(), 
+						errorEmbed(event.getMessage(), "Cannot find requested command."));
 			} else {
-				Functions.Messages.sendEmbeded(event.getChannel(), 
-						Functions.Messages.buildEmbed("Command Help", new Color(0x00ff00),
-								new Field((String) Functions.Utils.capitalize(cmd.getName()), cmd.getHelp() == null ? "No help message is provided." : cmd.getHelp(), false),
+				sendEmbeded(event.getChannel(), 
+						buildEmbed("Command Help", new Color(0x00ff00),
+								new Field((String) capitalize(cmd.getName()), cmd.getHelp() == null ? "No help message is provided." : cmd.getHelp(), false),
 								cmd.isDebug() ? new Field("Notice:", "Developer Only --- Currently in development.", false) : null));
 			}
 		}
 	}, "You're already on the help page. Stupid.");
 	
 	public static final Command INFORMATION = register("info", event -> {
-		Functions.Messages.sendEmbeded(event.getChannel(),
-				Functions.Messages.buildEmbed("Bot Information",
+		sendEmbeded(event.getChannel(),
+				buildEmbed("Bot Information",
 						new Color(0x42f598),
 						new Field("Owner:", Info.OWNER_TAG, false),
 						new Field("Language:", "Java", false),
@@ -183,10 +202,10 @@ public final class CommandRegistry {
 	public static final Command HELP = register("help", event -> {
 		MessageChannel c = event.getChannel();
 		switch (Functions.RANDOM.nextInt(4)) {
-		case 0 : Functions.Messages.sendMessage(c, "the walls are filled with j"); break;
-		case 1 : Functions.Messages.sendMessage(c, "hello " + event.getAuthor().getAsTag()); break;
-		case 2 : Functions.Messages.sendMessage(c, "مرحبا غروه الكرة لوغان"); break;
-		case 3 : Functions.Messages.sendMessage(c, "burger credit card"); break;
+		case 0 : sendMessage(c, "the walls are filled with j"); break;
+		case 1 : sendMessage(c, "hello " + event.getAuthor().getAsTag()); break;
+		case 2 : sendMessage(c, "مرحبا غروه الكرة لوغان"); break;
+		case 3 : sendMessage(c, "burger credit card"); break;
 		}
 	}, "Not what you'd expect from a help command. Why don't you try it out?");
 	
@@ -207,20 +226,20 @@ public final class CommandRegistry {
 				}
 			}
 		}
-		Functions.Messages.sendMessage(event.getChannel(), "```--Command List--" + list + "\n--End Of Command List--```");
+		sendMessage(event.getChannel(), "```--Command List--" + list + "\n--End Of Command List--```");
 	}, "Returns all registered commands. Note that this command is automated as development progress continues so some commands may not function correctly.");
 	
 	public static final Command AVATAR = register("avatar", event -> {
-		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		String[] args = multiArgs(event.getMessage());
 		if (args.length < 2) {
-			Functions.Messages.sendEmbeded(event.getChannel(),
-					Functions.Messages.buildEmbed(event.getMember().getEffectiveName() + "'s Avatar",
+			sendEmbeded(event.getChannel(),
+					buildEmbed(event.getMember().getEffectiveName() + "'s Avatar",
 					new Color(0xffffff),
 					event.getMember().getEffectiveAvatarUrl()));
-		} else if (Functions.Messages.isPinging(args[1])) {
+		} else if (isPinging(args[1])) {
 			Member pingedMember = event.getMessage().getMentionedMembers().get(0);
-			Functions.Messages.sendEmbeded(event.getChannel(),
-					Functions.Messages.buildEmbed(pingedMember.getEffectiveName() + "'s Avatar",
+			sendEmbeded(event.getChannel(),
+					buildEmbed(pingedMember.getEffectiveName() + "'s Avatar",
 					new Color(0xffffff),
 					pingedMember.getEffectiveAvatarUrl()));
 		} else if (args[1].length() > 0) {
@@ -231,22 +250,22 @@ public final class CommandRegistry {
 			search = search.trim();
 			try {
 				Member pingedMember = event.getGuild().getMembersByEffectiveName(search, true).get(0);
-				Functions.Messages.sendEmbeded(event.getChannel(),
-						Functions.Messages.buildEmbed(pingedMember.getEffectiveName() + "'s Avatar",
+				sendEmbeded(event.getChannel(),
+						buildEmbed(pingedMember.getEffectiveName() + "'s Avatar",
 						new Color(0xffffff),
 						pingedMember.getEffectiveAvatarUrl()));
-			} catch (IndexOutOfBoundsException e) {Functions.Messages.sendEmbeded(event.getChannel(), Functions.Messages.errorEmbed(event.getMessage(), "Could not grab avatar."));}
+			} catch (IndexOutOfBoundsException e) {sendEmbeded(event.getChannel(), errorEmbed(event.getMessage(), "Could not grab avatar."));}
 			
-		} else Functions.Messages.sendEmbeded(event.getChannel(), Functions.Messages.errorEmbed(event.getMessage(), "Could not grab avatar."));
+		} else sendEmbeded(event.getChannel(), errorEmbed(event.getMessage(), "Could not grab avatar."));
 	}, "Grabs the avatar of the user either searched my nickname, pinged, or if nothing specified, the user theirself.");
 	
 	public static final Command TTS = register("tts", event -> {
-		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		String[] args = multiArgs(event.getMessage());
 		new Thread(() -> {
 			try {
 				
-				if (args.length < 3) Functions.Messages.sendEmbeded(event.getChannel(),
-						Functions.Messages.errorEmbed(event.getMessage(), "Not enough parameters."));
+				if (args.length < 3) sendEmbeded(event.getChannel(),
+						errorEmbed(event.getMessage(), "Not enough parameters."));
 				else {
 					
 					boolean website15AI;
@@ -265,8 +284,8 @@ public final class CommandRegistry {
 						case "spy" -> {args[1] = "Spy"; website15AI = true;}
 						default -> {
 							website15AI = false;
-							Functions.Messages.sendEmbeded(event.getChannel(),
-									Functions.Messages.errorEmbed(event.getMessage(), "Cannot find voice."));
+							sendEmbeded(event.getChannel(),
+									errorEmbed(event.getMessage(), "Cannot find voice."));
 							return;
 						}
 					}
@@ -284,7 +303,7 @@ public final class CommandRegistry {
 						CloseableHttpResponse resp = httpTool.post(String.format("{\"character\":\"%s\",\"emotion\":\"Contextual\",\"text\":\"%s\"}", args[1], input), 
 								new BasicHeader("accept", "application/json"),
 								new BasicHeader("content-type", "application/json"));
-						JsonObject obj = Functions.Network.getJSON(resp);
+						JsonObject obj = getJSON(resp);
 						httpTool.close();
 						
 					    File rawFile = new File("src/main/resources/cache/ttsRaw.wav");
@@ -297,7 +316,7 @@ public final class CommandRegistry {
 					    
 					    convertTool.convert(AudioTypes.WAV, format, bit16);
 						
-						Functions.Messages.sendFileReply(event.getMessage(), bit16);
+						sendFileReply(event.getMessage(), bit16);
 						
 						// play in vc
 						
@@ -335,13 +354,13 @@ public final class CommandRegistry {
 			String attachmentOutCached = "src/main/resources/cache/quoteOut.png";
 			renderTool.complete(attachmentOutCached);
 			
-			Functions.Messages.sendFile(event.getChannel(), new File(attachmentOutCached));
+			sendFile(event.getChannel(), new File(attachmentOutCached));
 			
 		} catch (IOException e) {e.printStackTrace();}
 	}, "Renders a speech bubble the exact hex color of Discord's dark mode on top of the image provided by the user.");
 	
 	public static final Command PLAY = register("play", event -> {
-		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		String[] args = multiArgs(event.getMessage());
 		
 		AudioManager manager = event.getGuild().getAudioManager();
 		
@@ -354,8 +373,8 @@ public final class CommandRegistry {
 			} catch (InterruptedException | ExecutionException e) {e.printStackTrace();}
 			
 			if (MediaType.findFormat(FilenameUtils.getExtension(loc)) instanceof VideoTypes) {
-				Functions.Messages.sendEmbeded(event.getChannel(), 
-						Functions.Messages.buildEmbed("Audio Player", new Color(0x00ff00), 
+				sendEmbeded(event.getChannel(), 
+						buildEmbed("Audio Player", new Color(0x00ff00), 
 								new Field("Downloading File...", "This may take a few seconds, and longer if the file is in video format.", false),
 								new Field("Warning:", "This will overwrite the previous file queued, if any file was queued.", false)));
 				try {
@@ -369,12 +388,12 @@ public final class CommandRegistry {
 				}
 				PlayerManager.getInstance().load_play(event, loc);
 			} else {
-				Functions.Messages.sendEmbeded(event.getChannel(),
-						Functions.Messages.errorEmbed(event.getMessage(), "File format is not supported. Try audio or video."));
+				sendEmbeded(event.getChannel(),
+						errorEmbed(event.getMessage(), "File format is not supported. Try audio or video."));
 			}
 			
-		} else if (args.length < 2) Functions.Messages.sendEmbeded(event.getChannel(),
-				Functions.Messages.errorEmbed(event.getMessage(), "Not enough arguments."));
+		} else if (args.length < 2) sendEmbeded(event.getChannel(),
+				errorEmbed(event.getMessage(), "Not enough arguments."));
 		else {
 			if (!manager.isConnected()) {
 				manager.openAudioConnection(event.getMember().getVoiceState().getChannel()); 
@@ -392,26 +411,26 @@ public final class CommandRegistry {
 					} catch (ParseException | SpotifyWebApiException | IOException e) {
 							e.printStackTrace();
 					}
-					YouTube yt = Functions.OAuth.youtubeInstance();
+					YouTube yt = youtubeInstance();
 					for (String song : songs) {
 						List<SearchResult> results = yt.search().list("id,snippet").setQ(song).setMaxResults(4L)
 								.setFields("items(id/kind,id/videoId,snippet/title,snippet/thumbnails/default/url)").execute().getItems();
 						if (!results.isEmpty()) {
 							String vidID = results.get(0).getId().getVideoId();
 							PlayerManager.getInstance().load_play(event, "https://www.youtube.com/watch?v=" + vidID);
-						} else Functions.Messages.sendEmbeded(event.getChannel(),
-							Functions.Messages.errorEmbed(event.getMessage(), "Could not retrieve song via the Spotify API."));
+						} else sendEmbeded(event.getChannel(),
+							errorEmbed(event.getMessage(), "Could not retrieve song via the Spotify API."));
 					}
 				} else {
 					String input = "";
 					for (int i = 1; i < args.length; i++) {
 						input += " " + args[i];
 					}
-					YouTube yt = Functions.OAuth.youtubeInstance();
+					YouTube yt = youtubeInstance();
 					List<SearchResult> results = yt.search().list("id, snippet").setQ(input.trim()).setFields("items(id/kind,id/videoId,snippet/title,snippet/thumbnails/default/url)").execute().getItems();
 					if (results.isEmpty()) {
-						Functions.Messages.sendEmbeded(event.getChannel(),
-								Functions.Messages.errorEmbed(event.getMessage(), "Can not find video or audio."));
+						sendEmbeded(event.getChannel(),
+								errorEmbed(event.getMessage(), "Can not find video or audio."));
 						return;
 					}
 					String vidID = results.get(0).getId().getVideoId();
@@ -419,8 +438,8 @@ public final class CommandRegistry {
 					
 				}
 			} catch (IllegalArgumentException e) {
-					Functions.Messages.sendEmbeded(event.getChannel(),
-						Functions.Messages.errorEmbed(event.getMessage(), "User is not connected to a voice channel."));
+					sendEmbeded(event.getChannel(),
+						errorEmbed(event.getMessage(), "User is not connected to a voice channel."));
 			} catch (IOException e) {}
 		}
 	}, "Plays audio from different sources. Youtube links, Spotify links, and files. Must be in a voice channel to use.");
@@ -433,29 +452,29 @@ public final class CommandRegistry {
 			try {
 				info = player.getPlayingTrack().getInfo();
 				
-				Functions.Messages.sendEmbeded(event.getChannel(),
-						Functions.Messages.buildEmbed("Track Info", Color.CYAN,
+				sendEmbeded(event.getChannel(),
+						buildEmbed("Track Info", Color.CYAN,
 								new Field("Title:", info.title, false),
 								new Field("Author:", info.author, false),
 								new Field("Source:", info.uri, false),
 								new Field("Time:", manager.getScheduler().getSecondsIn() + " / " + (info.length / 1000) + 's', false)));
 			} catch (NullPointerException e) {
-				Functions.Messages.sendEmbeded(event.getChannel(),
-						Functions.Messages.errorEmbed(event.getMessage(), "No track is playing."));
+				sendEmbeded(event.getChannel(),
+						errorEmbed(event.getMessage(), "No track is playing."));
 			}		
-		} else Functions.Messages.sendEmbeded(event.getChannel(),
-					Functions.Messages.errorEmbed(event.getMessage(), "Bot is not connected to an audio channel."));
+		} else sendEmbeded(event.getChannel(),
+					errorEmbed(event.getMessage(), "Bot is not connected to an audio channel."));
 	}, "Returns the current playing song's information. This includes the title, author, source, and the elapsed time since it started.");
 	
 	public static final Command NEXT = register("next", event -> {
 		if (event.getGuild().getAudioManager().isConnected() && event.getMember().getVoiceState().inAudioChannel()) {
 			final GuildMusicManager manager = PlayerManager.getInstance().getMusicManager(event.getGuild());
 			if (manager.getScheduler().getQueue() == null) {
-				Functions.Messages.sendEmbeded(event.getChannel(),
-						Functions.Messages.errorEmbed(event.getMessage(), "Queue is empty."));
+				sendEmbeded(event.getChannel(),
+						errorEmbed(event.getMessage(), "Queue is empty."));
 			} else manager.getScheduler().nextTrack();
-		} else Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Not in voice channel."));
+		} else sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Not in voice channel."));
 	}, "Skips to the next song within the queue.");
 	
 	public static final Command VC = register("vc", event -> {
@@ -467,8 +486,8 @@ public final class CommandRegistry {
 				manager.kill();
 			}
 			else aManager.openAudioConnection(event.getMember().getVoiceState().getChannel());
-		} else Functions.Messages.sendEmbeded(event.getChannel(),
-					Functions.Messages.errorEmbed(event.getMessage(), "User is not in a voice channel."));
+		} else sendEmbeded(event.getChannel(),
+					errorEmbed(event.getMessage(), "User is not in a voice channel."));
 	}, "Toggles connection to the voice channel the user is connected to.");
 	
 	public static final Command STOP = register("stop", event -> {
@@ -478,19 +497,19 @@ public final class CommandRegistry {
 			if (audio.isConnected()) {
 				manager.kill();
 			} else {
-				Functions.Messages.sendEmbeded(event.getChannel(),
-						Functions.Messages.errorEmbed(event.getMessage(), "Bot is not connected to an audio channel."));
+				sendEmbeded(event.getChannel(),
+						errorEmbed(event.getMessage(), "Bot is not connected to an audio channel."));
 			}
-		} else Functions.Messages.sendEmbeded(event.getChannel(),
-				Functions.Messages.errorEmbed(event.getMessage(), "User is not in a voice channel."));
+		} else sendEmbeded(event.getChannel(),
+				errorEmbed(event.getMessage(), "User is not in a voice channel."));
 	}, "Stops the current track and clears the queue.");
 	
 	@Debug
 	public static final Command CAPTION = register("caption", event -> {
-		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		String[] args = multiArgs(event.getMessage());
 		if (event.getMessage().getAttachments().size() <= 0) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Must include an attachment."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Must include an attachment."));
 		} else {
 			Attachment toCaption = event.getMessage().getAttachments().get(0);
 			File cache = new File("src/main/resources/cache/caption_cache." + toCaption.getFileExtension()),
@@ -500,7 +519,7 @@ public final class CommandRegistry {
 				BufferedImage origin = ImageIO.read(cache);
 				int x = origin.getWidth();
 				int y = origin.getHeight();
-				BufferedImage resized = Functions.Rendering.resizeCanvas(origin, x, y + y / 5, false);
+				BufferedImage resized = resizeCanvas(origin, x, y + y / 5, false);
 				Graphics2D renderCaption = resized.createGraphics();
 				renderCaption.fillRect(0, 0, x, y / 5);
 				if (args.length > 1) {
@@ -514,15 +533,15 @@ public final class CommandRegistry {
 				ImageIO.write(resized, toCaption.getFileExtension(), output);
 			} catch (IOException e) {e.printStackTrace();}
 			
-			Functions.Messages.sendFile(event.getChannel(), output);
+			sendFile(event.getChannel(), output);
 		}
 	}, true);
 	
 	public static final Command MC_SERVER = register("mc", event -> {
-		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		String[] args = multiArgs(event.getMessage());
 		try {
 			GetRequester httpTool = new GetRequester("https://api.mcsrvstat.us/2/mc.omobasil.xyz");
-			JsonObject obj = Functions.Network.getJSON(httpTool.get());
+			JsonObject obj = getJSON(httpTool.get());
 			
 			httpTool.close();
 			
@@ -535,8 +554,8 @@ public final class CommandRegistry {
 						players += list.getString(i) + "\n";
 					}
 				}
-				Functions.Messages.sendEmbeded(event.getChannel(),
-						Functions.Messages.buildEmbed("Minecraft Server", new Color(0x99652e),
+				sendEmbeded(event.getChannel(),
+						buildEmbed("Minecraft Server", new Color(0x99652e),
 								new Field("Host:", "mc.omobasil.xyz", true),
 								new Field("Port:", obj.getInt("port") + "", true),
 								new Field("Player Count:", playerCount + " / " +
@@ -547,32 +566,32 @@ public final class CommandRegistry {
 				File motd = new File("src/main/resources/reusable/motd.html");
 				
 				if (args.length > 1) if (args[1].equalsIgnoreCase("motd")) {
-					Functions.Utils.writeToFile(motd, "<!DOCTYPE html>\n<html>\n" + 
+					writeToFile(motd, "<!DOCTYPE html>\n<html>\n" + 
 							obj.getJsonObject("motd")							 							   
 							   .getJsonArray("html")
 							   .getString(0) + "\n</html>");
-					Functions.Messages.sendFile(event.getChannel(), motd);
+					sendFile(event.getChannel(), motd);
 				}
 			} else {
-				Functions.Messages.sendEmbeded(event.getChannel(), 
-						Functions.Messages.buildEmbed("Minecraft Server", new Color(0xff0000),
+				sendEmbeded(event.getChannel(), 
+						buildEmbed("Minecraft Server", new Color(0xff0000),
 								new Field("Error:", "Server Offline", false)));
 			}
 		} catch (Exception e) {e.printStackTrace();}
 	}, "Returns the current information of the Minecraft server hosted by the bot owner. Write 'motd' as a parameter to access the MOTD message.");
 	
 	public static final Command CONVERT = register("convert", event -> {
-		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		String[] args = multiArgs(event.getMessage());
 		
 		if (args.length < 2)
-			Functions.Messages.sendEmbeded(event.getChannel(),
-					Functions.Messages.errorEmbed(event.getMessage(), "Must include a file format."));
+			sendEmbeded(event.getChannel(),
+					errorEmbed(event.getMessage(), "Must include a file format."));
 		else {
 			new Thread(() -> {
 				List<Attachment> attachments = event.getMessage().getAttachments();
 				if (attachments.size() <= 0)
-					Functions.Messages.sendEmbeded(event.getChannel(),
-							Functions.Messages.errorEmbed(event.getMessage(), "Must include an attachment."));
+					sendEmbeded(event.getChannel(),
+							errorEmbed(event.getMessage(), "Must include an attachment."));
 				else {
 					Attachment toConvert = attachments.get(0);
 					if (toConvert.getSize() < 10485760) {
@@ -584,17 +603,17 @@ public final class CommandRegistry {
 						try {
 							Converter convertTool = new Converter(inventory);
 							convertTool.convert(MediaType.findFormat(args[1]), null, null);
-							Functions.Messages.sendFileReply(event.getMessage(), convertTool.getOutputFile());
+							sendFileReply(event.getMessage(), convertTool.getOutputFile());
 						} catch (IllegalMediaException e) {
-							Functions.Messages.sendEmbeded(event.getChannel(), Functions.Messages.errorEmbed(
+							sendEmbeded(event.getChannel(), errorEmbed(
 									event.getMessage(), "Format provided does not support the media type provided."));
 						} catch (UnsupportedAudioFileException e) {
-							Functions.Messages.sendEmbeded(event.getChannel(), Functions.Messages.errorEmbed(
+							sendEmbeded(event.getChannel(), errorEmbed(
 									event.getMessage(), "Format provided is not supported."));
 						} catch (IOException e) {e.printStackTrace();}
 					} else {
-						Functions.Messages.sendEmbeded(event.getChannel(), 
-								Functions.Messages.errorEmbed(event.getMessage(), "Please keep inventory files below 10 MB."));
+						sendEmbeded(event.getChannel(), 
+								errorEmbed(event.getMessage(), "Please keep inventory files below 10 MB."));
 					}
 				}
 			}).start();
@@ -602,23 +621,23 @@ public final class CommandRegistry {
 	}, "Converts video, audio, or images to different formats.");
 	
 	public static final Command SHOW_PERMISSIONS = register("showperms", event -> {
-		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		String[] args = multiArgs(event.getMessage());
 		String perms = "";
 		if (args.length < 2) {
 			for (Permission p : event.getMember().getPermissions()) {
 				perms += "\n" + p.getName();
 			}
-			Functions.Messages.sendEmbeded(event.getChannel(),
-					Functions.Messages.buildEmbed(event.getMember().getNickname() + "'s Permissions",
+			sendEmbeded(event.getChannel(),
+					buildEmbed(event.getMember().getNickname() + "'s Permissions",
 					new Color(0xffffff),
 					new Field("List of Perms:", perms, false)));
-		} else if (Functions.Messages.isPinging(args[1])) {
+		} else if (isPinging(args[1])) {
 			Member pingedMember = event.getMessage().getMentionedMembers().get(0);
 			for (Permission p : pingedMember.getPermissions()) {
 				perms += "\n" + p.getName();
 			}
-			Functions.Messages.sendEmbeded(event.getChannel(),
-					Functions.Messages.buildEmbed(pingedMember.getEffectiveName() + "'s Permissions",
+			sendEmbeded(event.getChannel(),
+					buildEmbed(pingedMember.getEffectiveName() + "'s Permissions",
 					new Color(0xffffff),
 					new Field("List of Perms:", perms, false)));
 		} else if (args[1].length() > 0) {
@@ -632,13 +651,13 @@ public final class CommandRegistry {
 				for (Permission p : pingedMember.getPermissions()) {
 					perms += "\n" + p.getName();
 				}
-				Functions.Messages.sendEmbeded(event.getChannel(),
-						Functions.Messages.buildEmbed(pingedMember.getEffectiveName() + "'s Permissions",
+				sendEmbeded(event.getChannel(),
+						buildEmbed(pingedMember.getEffectiveName() + "'s Permissions",
 						new Color(0xffffff),
 						new Field("List of Perms:", perms, false)));
-			} catch (IndexOutOfBoundsException e) {Functions.Messages.sendEmbeded(event.getChannel(), Functions.Messages.errorEmbed(event.getMessage(), "Could not grab permissions."));}
+			} catch (IndexOutOfBoundsException e) {sendEmbeded(event.getChannel(), errorEmbed(event.getMessage(), "Could not grab permissions."));}
 			
-		} else Functions.Messages.sendEmbeded(event.getChannel(), Functions.Messages.errorEmbed(event.getMessage(), "Could not grab permissions."));
+		} else sendEmbeded(event.getChannel(), errorEmbed(event.getMessage(), "Could not grab permissions."));
 	}, "Returns all permissions the user has, or user specified as a parameter.");
 	
 	public static final Command RANDOM = register("random", event -> {
@@ -648,11 +667,11 @@ public final class CommandRegistry {
 		for (int i = 0; i < charAmount; i++) {
 			output += (Functions.RANDOM.nextBoolean()) ? data[Functions.RANDOM.nextInt(data.length)] : Character.toUpperCase(data[Functions.RANDOM.nextInt(data.length)]);
 		}
-		Functions.Messages.sendMessage(event.getChannel(), output);
+		sendMessage(event.getChannel(), output);
 	}, "Generates a random alpha-numeric character sequence from a length of 1-150.");
 	
 	public static final Command CLICKBAIT = register("clickbait", event -> {
-		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		String[] args = multiArgs(event.getMessage());
 		
 		int index = 0;
 		boolean random = true;
@@ -693,11 +712,11 @@ public final class CommandRegistry {
 		BufferedImage cl3Temp = null;
 		
 		if (imageInput.size() <= 0) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Must include an image attachment."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Must include an image attachment."));
 		} else if (!(MediaType.findFormat(imageInput.get(0).getFileExtension()) instanceof ImageTypes)) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Attachment must be an image."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Attachment must be an image."));
 		} else {
 			
 			File input = new File("src/main/resources/cache/clickbaitIn." + imageInput.get(0).getFileExtension());
@@ -767,22 +786,22 @@ public final class CommandRegistry {
 			case 3 -> {osaka.run(); break;}
 			}
 			
-			Functions.Messages.sendFileReply(event.getMessage(), new File(output));
+			sendFileReply(event.getMessage(), new File(output));
 		}
 	}, "Renders the image proveded by the user over a predetermined image of an internet clickbait thumbnail. Specify an integer as a parameter to select a specific thumbnail.");
 	
 	public static final Command PRINT = register("print", event -> {
-		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		String[] args = multiArgs(event.getMessage());
 		
 		if (args.length < 2) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Include a string."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Include a string."));
 		} else {
 			String print = "";
 			for (int i = 1; i < args.length; i++) {
 				print += " " + args[i];
 			}
-			Functions.Messages.sendMessage(event.getChannel(), print.trim());
+			sendMessage(event.getChannel(), print.trim());
 		}
 	}, "Sends an identical message.");
 	
@@ -792,8 +811,8 @@ public final class CommandRegistry {
 			JsonObject slip = Json.createReader(httpTool.get().getEntity().getContent()).readObject();
 			String advice = slip.getJsonObject("slip").getString("advice");
 			
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.buildEmbed("adviceslip.com", new Color(0x7acaff), 
+			sendEmbeded(event.getChannel(), 
+					buildEmbed("adviceslip.com", new Color(0x7acaff), 
 							new Field("Advice", advice, false)));
 			
 			httpTool.close();
@@ -801,19 +820,19 @@ public final class CommandRegistry {
 	}, "Returns a helpful message.");
 	
 	public static final Command RENDER = register("render", event -> {
-		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		String[] args = multiArgs(event.getMessage());
 		List<Attachment> attachments = event.getMessage().getAttachments();
 		int imageAmount = attachments.size();
 		
 		if (imageAmount < 2) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Include at least two attachments."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Include at least two attachments."));
 			return;
 		}
 		
 		if (args.length - 1 < imageAmount * 2) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Include two integers per image."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Include two integers per image."));
 			return;
 		}
 		
@@ -823,15 +842,15 @@ public final class CommandRegistry {
 				positions[i] = Integer.parseInt(args[i + 1]);
 			}
 		} catch (NumberFormatException e) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Arguments are not integers."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Arguments are not integers."));
 			return;
 		}
 		
 		for (int pos : positions) {
 			if (pos < 0) {
-				Functions.Messages.sendEmbeded(event.getChannel(), 
-						Functions.Messages.errorEmbed(event.getMessage(), "Integers cannot be negative."));
+				sendEmbeded(event.getChannel(), 
+						errorEmbed(event.getMessage(), "Integers cannot be negative."));
 				return;
 			}
 		}
@@ -839,8 +858,8 @@ public final class CommandRegistry {
 		try {
 			for (int i = 0; i < imageAmount; i++) {
 					if (!(MediaType.findFormat(attachments.get(i).getFileExtension()) instanceof ImageTypes)) {
-						Functions.Messages.sendEmbeded(event.getChannel(), 
-								Functions.Messages.errorEmbed(event.getMessage(), "An attachment provided is not an image."));
+						sendEmbeded(event.getChannel(), 
+								errorEmbed(event.getMessage(), "An attachment provided is not an image."));
 						return;
 					}
 					FileUtils.copyURLToFile(new URL(attachments.get(i).getProxyUrl()), new File("src/main/resources/cache/render" + i + "." + attachments.get(i).getFileExtension()));
@@ -864,21 +883,21 @@ public final class CommandRegistry {
 		String loc = "src/main/resources/cache/renderOut.png";
 		renderTool.complete(loc);
 		
-		Functions.Messages.sendFileReply(event.getMessage(), new File(loc));
+		sendFileReply(event.getMessage(), new File(loc));
 	}, "Renders images on one big canvas (its size determined by the largest image attached) at specific X/Y coordinates branching from the upper left corner of the canvas. Images are rendered in order (last attachment will overlap all others).");
 	
 	public static final Command SCALE = register("scale", event -> {
-		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		String[] args = multiArgs(event.getMessage());
 		List<Attachment> attachments = event.getMessage().getAttachments();
 		
 		if (attachments.size() <= 0) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Include at least one attachment."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Include at least one attachment."));
 			return;
 		}
 		if (args.length < 3) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Include two integers. (X and Y positions to scale down/up to.)"));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Include two integers. (X and Y positions to scale down/up to.)"));
 			return;
 		}
 		int[] positions = new int[2];
@@ -886,23 +905,23 @@ public final class CommandRegistry {
 			positions[0] = Integer.parseInt(args[1]);
 			positions[1] = Integer.parseInt(args[2]);
 		} catch (NumberFormatException e) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Arguments are not integers."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Arguments are not integers."));
 			return;
 		}
 		if (positions[0] < 1 || positions[1] < 1) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Integers cannot be negative or zero."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Integers cannot be negative or zero."));
 			return;
 		}
 		if (positions[0] > 5000 || positions[1] > 5000) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Max resolution for both height and width is 5000."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Max resolution for both height and width is 5000."));
 			return;
 		}
 		if (!(MediaType.findFormat(attachments.get(0).getFileExtension()) instanceof ImageTypes)) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "An attachment provided is not an image."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "An attachment provided is not an image."));
 			return;
 		}
 		File loc = new File("src/main/resources/cache/scaleIn." + attachments.get(0).getFileExtension());
@@ -914,15 +933,15 @@ public final class CommandRegistry {
 			
 		} catch (IOException e) {e.printStackTrace();}
 		
-		Functions.Messages.sendFileReply(event.getMessage(), outLoc);
+		sendFileReply(event.getMessage(), outLoc);
 	}, "Scales an image to the specified width and height.");
 	
 	public static final Command MATH = register("math", event -> {
-		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		String[] args = multiArgs(event.getMessage());
 		
 		if (args.length < 2) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Specify an operation."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Specify an operation."));
 			return;
 		}
 		
@@ -966,16 +985,16 @@ public final class CommandRegistry {
 			case "k-c" -> {operation = Operations.OTHER; Operations.OTHER.setParametersNeeded(1);}
 			case "k-f" -> {operation = Operations.OTHER; Operations.OTHER.setParametersNeeded(1);}
 			default -> {
-				Functions.Messages.sendEmbeded(event.getChannel(), 
-						Functions.Messages.errorEmbed(event.getMessage(), "Math operation not found. Do \"->cmdhelp math\" for all operations."));
+				sendEmbeded(event.getChannel(), 
+						errorEmbed(event.getMessage(), "Math operation not found. Do \"->cmdhelp math\" for all operations."));
 				return;
 			}
 		}
 		int offset = operation.paramsNeeded();
 		int extOffset = operation.extraParamsNeeded();
 		if (args.length < offset + 2) { //add two to bypass command request and operation request
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Specify more parameters."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Specify more parameters."));
 			return;
 		}
 		
@@ -1062,8 +1081,8 @@ public final class CommandRegistry {
 					case "k-c" -> output = Operations.KELVIN_TO_CELSIUS.carry(Double.parseDouble(params[0]));
 					case "k-f" -> output = Operations.KELVIN_TO_FAHRENHEIT.carry(Double.parseDouble(params[0]));
 					default -> {
-						Functions.Messages.sendEmbeded(event.getChannel(), 
-								Functions.Messages.errorEmbed(event.getMessage(), "Internal Server Error. Please report this issue."));
+						sendEmbeded(event.getChannel(), 
+								errorEmbed(event.getMessage(), "Internal Server Error. Please report this issue."));
 						throw new NotFoundException("operation not found and not caught by filter");
 					}
 				}
@@ -1072,28 +1091,28 @@ public final class CommandRegistry {
 		
 		answer = toAnswer.apply(output);
 		
-		Functions.Messages.sendEmbeded(event.getChannel(), 
-				Functions.Messages.buildEmbed("Math", new Color(0x0000ff),
+		sendEmbeded(event.getChannel(), 
+				buildEmbed("Math", new Color(0x0000ff),
 						new Field("Output:", answer, false)));
 		
 	}, "Basic bitwise math. Specify the operation before the numbers. To specify an operation, use its name, symbol, or abbreviation.\nExample: \"->math log 10 100\" returns 2.");
 	
 	public static final Command CROP = register("crop", event -> {
-		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		String[] args = multiArgs(event.getMessage());
 		if (event.getMessage().getAttachments().size() <= 0) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Include an attachment."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Include an attachment."));
 			return;
 		}
 		if (args.length < 2) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Include at least one integer."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Include at least one integer."));
 			return;
 		}
 		Attachment toCrop = event.getMessage().getAttachments().get(0);
 		if (!(MediaType.findFormat(toCrop.getFileExtension()) instanceof ImageTypes)) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Attachment must be an image."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Attachment must be an image."));
 			return;
 		}
 		File input = new File("src/main/resources/cache/cropIn." + toCrop.getFileExtension());
@@ -1108,8 +1127,8 @@ public final class CommandRegistry {
 				if (args.length >= 4) bottom = Integer.parseInt(args[3]);
 				if (args.length > 4) left = Integer.parseInt(args[4]);
 			} catch (NumberFormatException e) {
-				Functions.Messages.sendEmbeded(event.getChannel(), 
-						Functions.Messages.errorEmbed(event.getMessage(), "Parameters are not integers."));
+				sendEmbeded(event.getChannel(), 
+						errorEmbed(event.getMessage(), "Parameters are not integers."));
 				return;
 			}
 			
@@ -1117,31 +1136,31 @@ public final class CommandRegistry {
 			try {
 				ImageIO.write(new Cropper(in).crop(top, right, bottom, left), "png", output);
 			} catch (RasterFormatException e) {
-				Functions.Messages.sendEmbeded(event.getChannel(), 
-						Functions.Messages.errorEmbed(event.getMessage(), "Invalid parameters relating to the image. Perhaps the integers you input are bigger than the image's dimensions.\nUse \"->mediainfo\" to get the dimensions of an attachment.\nUse \"->cmdhelp crop\" for instructions on the cropping procedure."));
+				sendEmbeded(event.getChannel(), 
+						errorEmbed(event.getMessage(), "Invalid parameters relating to the image. Perhaps the integers you input are bigger than the image's dimensions.\nUse \"->mediainfo\" to get the dimensions of an attachment.\nUse \"->cmdhelp crop\" for instructions on the cropping procedure."));
 				return;
 			}
-			Functions.Messages.sendFileReply(event.getMessage(), output);
+			sendFileReply(event.getMessage(), output);
 			
 		} catch (IOException e) {}
 	}, "Crops an image from all sides. Input integers representing pixels to cut into the side. The rotation for parameters is clockwise staring north.\nExample: \"->crop 10 20 30 40\" will cut into the top 10 pixels, the right 20 pixels, the bottom 30 pixels, and the left 40 pixels.");
 	
 	public static final Command MEDIA_INFO = register("mediainfo", event -> {
 		if (event.getMessage().getAttachments().size() <= 0) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Include an attachment."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Include an attachment."));
 			return;
 		}
 		Attachment infoImg = event.getMessage().getAttachments().get(0);
 		int x = infoImg.getWidth(), y = infoImg.getHeight();
 		if (x == -1 || y == -1) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Attachment must be a video or image."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Attachment must be a video or image."));
 			return;
 		}
 		
-		Functions.Messages.sendEmbeded(event.getChannel(), 
-				Functions.Messages.buildEmbed("Media Info", new Color(0x0000ff), 
+		sendEmbeded(event.getChannel(), 
+				buildEmbed("Media Info", new Color(0x0000ff), 
 						new Field("File name:", infoImg.getFileName(), false),
 						new Field("Width:", x + "px", true),
 						new Field("Height:", y + "px", true)).setThumbnail(infoImg.getProxyUrl()));
@@ -1149,22 +1168,22 @@ public final class CommandRegistry {
 	}, "Retrieves information of the image provided.");
 	
 	public static final Command DRAW_TEXT = register("drawtext", event -> {
-		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		String[] args = multiArgs(event.getMessage());
 		
 		if (event.getMessage().getAttachments().size() <= 0) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Include an attachment."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Include an attachment."));
 			return;
 		}
 		Attachment toDraw = event.getMessage().getAttachments().get(0);
 		if (!(MediaType.findFormat(toDraw.getFileExtension()) instanceof ImageTypes)) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Attachment must be an image."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Attachment must be an image."));
 			return;
 		}
 		if (args.length < 7) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Include two integers (x and y), a color (string or hexadecimal), a font, the font size, and a string."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Include two integers (x and y), a color (string or hexadecimal), a font, the font size, and a string."));
 			return;
 		}
 		
@@ -1173,28 +1192,28 @@ public final class CommandRegistry {
 			coords[0] = Integer.parseInt(args[1]);
 			coords[1] = Integer.parseInt(args[2]);
 		} catch (NumberFormatException e) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Parameters are not integers."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Parameters are not integers."));
 			return;
 		}
-		Color textColor = Functions.Rendering.findColor(args[3]).get();
+		Color textColor = findColor(args[3]).get();
 		if (textColor == null) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Color not found. If you think this is a problem and you entered a valid color, please report this."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Color not found. If you think this is a problem and you entered a valid color, please report this."));
 			return;
 		}
 		int fontSize = 0;
 		try {
 			fontSize = Integer.parseInt(args[5]);
 		} catch (NumberFormatException e) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Font size is not an integer."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Font size is not an integer."));
 			return;
 		}
-		Font font = Functions.Rendering.findFont(args[4] + "-" + fontSize);
+		Font font = findFont(args[4] + "-" + fontSize);
 		if (font == null) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Font not found. If you think this is a problem and you entered a valid font, please report this."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Font not found. If you think this is a problem and you entered a valid font, please report this."));
 			return;
 		}
 		
@@ -1216,15 +1235,15 @@ public final class CommandRegistry {
 			g.dispose();
 			
 			ImageIO.write(img, "png", out);
-			Functions.Messages.sendFileReply(event.getMessage(), out);
+			sendFileReply(event.getMessage(), out);
 			
 		} catch (IOException e) {}
 		
 	}, "Draws text over an image. There are many parameters needed. These are:\nAn attachment, X coordinate, Y coordinate, Text color, Text font, Font size, and the rest being whatever text you want to be drawn.");
 	
 	public static final Command API = register("api", event -> {
-		Functions.Messages.sendEmbeded(event.getChannel(), 
-				Functions.Messages.buildEmbed("Element-119 API", new Color(0x34eba1), 
+		sendEmbeded(event.getChannel(), 
+				buildEmbed("Element-119 API", new Color(0x34eba1), 
 						new Field("How to set up:", "This API is for implementing your own custom features into your server. To add these, server members with **Administrator** access can "
 								+ "use the \"->custom\" command, attachming a **.json** file containing the features. To build the file correctly, check out the documentation over on the GitHub page.", false),
 						new Field("Link:", "https://github.com/skyeblahaj/Element-119-Discord-Bot", false)
@@ -1233,21 +1252,21 @@ public final class CommandRegistry {
 	
 	@Debug
 	public static final Command ROTATE = register("rotate", event -> {
-		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		String[] args = multiArgs(event.getMessage());
 		if (args.length < 2) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Enter an integer value (as degrees)."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Enter an integer value (as degrees)."));
 			return;
 		}
 		if (event.getMessage().getAttachments().size() <= 0) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Include an attachment."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Include an attachment."));
 			return;
 		}
 		Attachment inputFile = event.getMessage().getAttachments().get(0);
 		if (!(MediaType.findFormat(inputFile.getFileExtension()) instanceof ImageTypes)) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Attachment must be an image."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Attachment must be an image."));
 			return;
 		}
 		File inputLoc = new File("src/main/resources/cache/rotateIn." + inputFile.getFileExtension());
@@ -1258,15 +1277,15 @@ public final class CommandRegistry {
 			ImageIO.write(renderTool.rotate(Integer.parseInt(args[1])), "png", outputLoc);
 		} catch (IOException e) {}
 		
-		Functions.Messages.sendFileReply(event.getMessage(), outputLoc);
+		sendFileReply(event.getMessage(), outputLoc);
 	}, true);
 	
 	@Debug
 	public static final Command DOWNLOAD = register("download", event -> {
-		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		String[] args = multiArgs(event.getMessage());
 		if (args.length < 2) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Include a youtube URL."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Include a youtube URL."));
 			return;
 		}
 		try {
@@ -1274,11 +1293,39 @@ public final class CommandRegistry {
 		} catch (IOException e) {e.printStackTrace();}
 	}, true);
 	
+	@Debug
+	public static final Command USER_FEATURES = register("userfeature", event -> {
+		
+	}, true);
+	
+	@Debug
+	public static final Command CROSSOVER = register("crossover", event -> {
+	
+		File data = UserController.USER_DATA.get(event.getMember().getUser());
+		
+		if (!data.exists()) {
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "You have not set a custom crossover feature."));
+			return;
+		}
+		
+		CustomUserFeatures features = UserController.FEATURES.get(event.getMember().getUser());
+		String crossoverData = ((JsonString) features.getData("crossover")).getString();
+		
+		sendMessage(event.getChannel(), crossoverData);
+		
+	}, true);
+	
+	@Debug
+	public static final Command REMOVE_CROSSOVER = register("rmvcrossover", event -> {
+		
+	}, true);
+	
 //////////////////////////////////////////////////////////////////////////////////////////////////
 //OWNER COMMANDS
 
 	public static final OwnerCommand BOT_SHUTDOWN = registerOwner("botshutdown", event -> {
-		Functions.Messages.sendMessage(event.getChannel(), "Bot is shutting down...");
+		sendMessage(event.getChannel(), "Bot is shutting down...");
 		try {
 			Thread.sleep(1500);
 		} catch (InterruptedException e) {e.printStackTrace();}
@@ -1286,7 +1333,7 @@ public final class CommandRegistry {
 	}, "Shuts down the current instance of the bot.");
 	
 	public static final OwnerCommand SYSTEM_SHUTDOWN = registerOwner("systemshutdown", event -> {
-		Functions.Messages.sendMessage(event.getChannel(), "System is shutting down...");
+		sendMessage(event.getChannel(), "System is shutting down...");
 		try {
 			Thread.sleep(1500);
 			Runtime.getRuntime().exec("shutdown -s -t 0"); //win10 only
@@ -1299,7 +1346,7 @@ public final class CommandRegistry {
 	}, "Switches to manual mode, providing a control panel.");
 	
 	public static final OwnerCommand RUNTIME = registerOwner("runtime", event -> {
-		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		String[] args = multiArgs(event.getMessage());
 		try {
 			String[] input = new String[args.length - 1];
 			for (int i = 0; i < args.length - 1; i++) {
@@ -1317,46 +1364,46 @@ public final class CommandRegistry {
 //////////////////////////////////////////////////////////////////////////////////////////////////
 //PERMISSION COMMANDS	
 	public static final PermissionCommand CLEAR = registerPermission("clear", event -> {
-		String[] args = Functions.Messages.multiArgs(event.getMessage());
-		if (args.length < 2) Functions.Messages.sendEmbeded(event.getChannel(), 
-				Functions.Messages.errorEmbed(event.getMessage(), "Must include an integer."));
+		String[] args = multiArgs(event.getMessage());
+		if (args.length < 2) sendEmbeded(event.getChannel(), 
+				errorEmbed(event.getMessage(), "Must include an integer."));
 		else {
 			try {
 				List<Message> toPurge = event.getChannel().getHistory().retrievePast(Integer.parseInt(args[1]) + 1).complete();
 				event.getChannel().purgeMessages(toPurge);
-				Functions.Messages.sendEmbeded(event.getChannel(),
-						Functions.Messages.buildEmbed("Message Purge Success", new Color(0x00ff00),
+				sendEmbeded(event.getChannel(),
+						buildEmbed("Message Purge Success", new Color(0x00ff00),
 								new Field("Amount cleared:", args[1], false)));
 			} catch (IllegalArgumentException e) {
-				Functions.Messages.sendEmbeded(event.getChannel(),
-						Functions.Messages.errorEmbed(event.getMessage(), "Can only clear up to 100 messages, or messages are too old for automated deletion. Remember, your input is increased by one because of your command request."));
+				sendEmbeded(event.getChannel(),
+						errorEmbed(event.getMessage(), "Can only clear up to 100 messages, or messages are too old for automated deletion. Remember, your input is increased by one because of your command request."));
 			}
 		}
 	}, "Purges the amount of previous messages specified as a parameter.", Permission.MESSAGE_MANAGE);
 	
 	public static final PermissionCommand CUSTOM = registerPermission("custom", event -> {
-		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		String[] args = multiArgs(event.getMessage());
 		List<Attachment> atts = event.getMessage().getAttachments();
 		File loc = new File("src/main/resources/custom_interface/" + event.getGuild().getId() + ".json");
 		
 		if (loc.exists()) {
 			if (args.length > 1) {
 				if (args[1].equalsIgnoreCase("get")) {
-					Functions.Messages.sendFile(event.getChannel(), loc);
+					sendFile(event.getChannel(), loc);
 					return;
 				}
 			}
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-				Functions.Messages.errorEmbed(event.getMessage(), "Custom server features already exist."));
+			sendEmbeded(event.getChannel(), 
+				errorEmbed(event.getMessage(), "Custom server features already exist."));
 		}
 		else {
 			if (atts.size() <= 0) {
-				Functions.Messages.sendEmbeded(event.getChannel(), 
-						Functions.Messages.errorEmbed(event.getMessage(), "Must include a .json file."));
+				sendEmbeded(event.getChannel(), 
+						errorEmbed(event.getMessage(), "Must include a .json file."));
 			}
 			else if (!atts.get(0).getFileExtension().equalsIgnoreCase("json")) {
-				Functions.Messages.sendEmbeded(event.getChannel(), 
-						Functions.Messages.errorEmbed(event.getMessage(), "File must be a .json file."));
+				sendEmbeded(event.getChannel(), 
+						errorEmbed(event.getMessage(), "File must be a .json file."));
 			}
 			else {
 				try {
@@ -1364,8 +1411,8 @@ public final class CommandRegistry {
 					CustomGuildFeatures cgf = new CustomGuildFeatures(event.getGuild());
 					
 					cgf.register();
-					Functions.Messages.sendEmbeded(event.getChannel(), 
-							Functions.Messages.buildEmbed("Custom Server Features", new Color(0x00ff00), 
+					sendEmbeded(event.getChannel(), 
+							buildEmbed("Custom Server Features", new Color(0x00ff00), 
 									new Field("Success", "Added custom features.", false)));
 				} catch (InterruptedException | ExecutionException | IOException e) {e.printStackTrace();}
 			}
@@ -1378,17 +1425,17 @@ public final class CommandRegistry {
 			try {
 				GuildController.FEATURES.get(event.getGuild()).deregister();
 				FileUtils.forceDelete(loc);
-				Functions.Messages.sendEmbeded(event.getChannel(), Functions.Messages.buildEmbed("Custom Server Features", new Color(0x00ff00),
+				sendEmbeded(event.getChannel(), buildEmbed("Custom Server Features", new Color(0x00ff00),
 						new Field("Success", "Deleted custom server features.", false)));
 			} catch (IOException e) {e.printStackTrace();}
 		} else {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Custom server features do not currently exist."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Custom server features do not currently exist."));
 		}
 	}, "Removes any custom server features.", Permission.ADMINISTRATOR);
 	
 	public static final PermissionCommand CHANGE_NICKNAME = registerPermission("nickname", event -> {
-		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		String[] args = multiArgs(event.getMessage());
 		String input = "";
 		if (args.length < 2) {
 			event.getGuild().getSelfMember().modifyNickname("").complete();
@@ -1399,22 +1446,22 @@ public final class CommandRegistry {
 			event.getGuild().getSelfMember().modifyNickname(input.trim()).complete();
 		}
 		
-		Functions.Messages.sendEmbeded(event.getChannel(), 
-				Functions.Messages.buildEmbed("Change Nickname", new Color(0x00ff00), 
+		sendEmbeded(event.getChannel(), 
+				buildEmbed("Change Nickname", new Color(0x00ff00), 
 						new Field("Success", "Nickname changed to " + (args.length < 2 ? event.getJDA().getSelfUser().getName() : input.trim()), false)));
 		
 	}, "Changes the bot's nickname. If no nickname is specified, it will change to the bot's username.", Permission.NICKNAME_MANAGE);
 	
 	public static final PermissionCommand KICK_MEMBER = registerPermission("kick", event -> {
-		String[] args = Functions.Messages.multiArgs(event.getMessage());
+		String[] args = multiArgs(event.getMessage());
 		if (args.length < 2) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Mention a member of this server."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Mention a member of this server."));
 			return;
 		}
-		if (!Functions.Messages.isPinging(args[1])) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Member must be mentioned."));
+		if (!isPinging(args[1])) {
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Member must be mentioned."));
 			return;
 		}
 		String reason = "";
@@ -1423,8 +1470,8 @@ public final class CommandRegistry {
 		}
 		List<Member> mentioned = event.getMessage().getMentionedMembers();
 		if (mentioned.size() <= 0) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Mention does not include a member."));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Mention does not include a member."));
 			return;
 		}
 		Member memberToKick = mentioned.get(0);
@@ -1435,12 +1482,12 @@ public final class CommandRegistry {
 				memberToKick.kick(reason.trim()).complete();
 			}	
 		} catch (HierarchyException e) {
-			Functions.Messages.sendEmbeded(event.getChannel(), 
-					Functions.Messages.errorEmbed(event.getMessage(), "Cannot kick member with equal or higher role hierarchy.", e));
+			sendEmbeded(event.getChannel(), 
+					errorEmbed(event.getMessage(), "Cannot kick member with equal or higher role hierarchy.", e));
 			return;
 		}
-		Functions.Messages.sendEmbeded(event.getChannel(), 
-				Functions.Messages.buildEmbed("Member Kick", new Color(0x00ff00), 
+		sendEmbeded(event.getChannel(), 
+				buildEmbed("Member Kick", new Color(0x00ff00), 
 						new Field("Success", "Kicked member: **" + memberToKick.getEffectiveName() + "**", false),
 						!reason.equals("") ? new Field("With Reason:", reason, false) : null));
 		
